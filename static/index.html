@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人 AI 助理</title>
+    <style>
+        /* ============================================================
+           CSS 全称 Cascading Style Sheets（层叠样式表）
+           作用：控制页面"长什么样"——颜色、大小、间距、动画
+           你不用学 CSS，把它当配置文件看，改改颜色数字即可
+           ============================================================ */
+
+        /* 通配符 * 选中页面上所有元素，这三行是常见"初始化"，清掉浏览器默认边距 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;                  /* vh = viewport height，占满整个浏览器窗口高度 */
+        }
+
+        /* ============================================================
+           整体布局：侧边栏 + 聊天区 横向排列
+           ============================================================ */
+        .app-layout {
+            display: flex;                  /* flex 布局：让子元素（侧边栏、聊天区）横着排 */
+            height: 100vh;                  /* 占满窗口高度 */
+            width: 100%;
+        }
+
+        /* ============================================================
+           侧边栏 — 会话列表
+           ============================================================ */
+        .sidebar {
+            width: 280px;                   /* 固定宽度 */
+            flex-shrink: 0;                 /* 窗口变小时不压缩侧边栏 */
+            background: #2c3e50;            /* 深蓝灰背景，和白色聊天区形成对比 */
+            color: #ecf0f1;                 /* 浅灰白文字 */
+            display: flex;
+            flex-direction: column;         /* 子元素从上到下排列 */
+        }
+
+        /* 侧边栏顶部：标题 + 新建按钮 */
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #3d5166;  /* 分割线，比背景稍亮 */
+            display: flex;
+            justify-content: space-between;     /* 标题靠左，按钮靠右 */
+            align-items: center;                /* 垂直居中 */
+        }
+
+        .sidebar-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* 新建会话按钮 */
+        .btn-new-session {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: #3498db;             /* 亮蓝色 */
+            color: #fff;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-new-session:hover {
+            background: #2980b9;             /* 悬停时变深 */
+        }
+
+        /* 会话列表容器：可滚动 */
+        .session-list {
+            flex: 1;                         /* 占满侧边栏剩余高度 */
+            overflow-y: auto;                /* 会话多了出现滚动条 */
+        }
+
+        /* 单个会话条目 */
+        .session-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #3d5166;
+            cursor: pointer;                 /* 鼠标变手型，暗示可点击 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s;    /* 背景色变化加 0.15 秒过渡动画 */
+        }
+
+        .session-item:hover {
+            background: #3d5166;             /* 悬停时背景变亮 */
+        }
+
+        /* 当前选中的会话高亮 */
+        .session-item.active {
+            background: #3498db;             /* 亮蓝背景表示"这是当前会话" */
+        }
+
+        /* 会话条目的文字区域 */
+        .session-info {
+            flex: 1;                         /* 占满剩余宽度，把删除按钮挤到右边 */
+            min-width: 0;                    /* flex 子元素默认不会缩小到内容以下，设 min-width:0 允许文字截断 */
+        }
+
+        .session-title {
+            font-size: 14px;
+            font-weight: 500;
+            /* 超出宽度时显示省略号 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta {
+            font-size: 11px;
+            color: #95a5a6;                  /* 比标题文字更暗 */
+            margin-top: 4px;
+        }
+
+        /* 删除按钮，默认隐藏，悬停时显示 */
+        .btn-delete-session {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            color: #95a5a6;
+            font-size: 14px;
+            cursor: pointer;
+            flex-shrink: 0;                  /* 不被压缩 */
+            display: none;                   /* 默认隐藏 */
+        }
+
+        .session-item:hover .btn-delete-session {
+            display: block;                  /* 鼠标悬停在会话条目上时才显示 */
+        }
+
+        .btn-delete-session:hover {
+            background: #e74c3c;             /* 删除按钮悬停变红 */
+            color: #fff;
+        }
+
+        /* ============================================================
+           聊天区（右侧主体）
+           ============================================================ */
+        .chat-area {
+            flex: 1;                         /* 占满剩余宽度 */
+            display: flex;
+            flex-direction: column;          /* 头部、消息区、输入区从上到下排列 */
+            background: #fff;
+            min-width: 0;                    /* 防止内容撑开 */
+        }
+
+        /* 聊天区顶部标题栏 */
+        .chat-header {
+            background: #4a90d9;
+            color: #fff;
+            padding: 16px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            flex-shrink: 0;                  /* 不参与压缩 */
+        }
+
+        /* ============================================================
+           消息显示区
+           ============================================================ */
+        .chat-messages {
+            flex: 1;                         /* 占据剩余所有空间 */
+            overflow-y: auto;                /* 消息多了出现纵向滚动条 */
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;                       /* 消息气泡之间的间距 */
+        }
+
+        /* 单条消息包裹层（气泡 + 时间戳） */
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+            max-width: 75%;
+        }
+
+        /* 用户消息靠右 */
+        .message-wrapper.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        /* 助手消息靠左 */
+        .message-wrapper.assistant {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        /* 消息气泡 */
+        .message-bubble {
+            padding: 10px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            word-break: break-word;          /* 超长单词/URL 自动换行 */
+        }
+
+        .message-wrapper.user .message-bubble {
+            background: #4a90d9;
+            color: #fff;
+        }
+
+        .message-wrapper.assistant .message-bubble {
+            background: #e8eef5;
+            color: #333;
+        }
+
+        /* 消息时间戳 */
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        /* 空状态提示：没有消息时居中显示 */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #bbb;
+            font-size: 15px;
+        }
+
+        /* ============================================================
+           输入区
+           ============================================================ */
+        .chat-input {
+            display: flex;
+            padding: 12px 16px;
+            border-top: 1px solid #e0e0e0;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border-color: #4a90d9;
+        }
+
+        .chat-input button {
+            padding: 10px 24px;
+            background: #4a90d9;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;             /* 按钮文字不换行 */
+        }
+
+        .chat-input button:hover {
+            background: #3a7bc8;
+        }
+
+        .chat-input button:disabled {
+            background: #a0c0e0;
+            cursor: not-allowed;
+        }
+        /* ============================================================
+           Markdown 内容样式 — 代码块、列表、表格等
+           ============================================================ */
+        .message-bubble h1 { font-size: 1.4em; font-weight: 700; margin: 0.5em 0 0.3em; }
+        .message-bubble h2 { font-size: 1.2em; font-weight: 700; margin: 0.5em 0 0.3em; }
+        .message-bubble h3 { font-size: 1.1em; font-weight: 700; margin: 0.4em 0 0.2em; }
+        .message-bubble p { margin: 0.3em 0; }
+        .message-bubble ul, .message-bubble ol { padding-left: 1.5em; margin: 0.3em 0; }
+        .message-bubble li { margin: 0.1em 0; }
+        .message-bubble strong { font-weight: 700; }
+        .message-bubble em { font-style: italic; }
+
+        /* 行内代码 */
+        .message-bubble code {
+            background: rgba(0, 0, 0, 0.08);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+            font-size: 0.9em;
+        }
+
+        /* 代码块 */
+        .message-bubble pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.5em 0;
+            line-height: 1.5;
+        }
+        .message-bubble pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            color: inherit;
+            font-size: 0.85em;
+        }
+
+        /* 引用块 */
+        .message-bubble blockquote {
+            border-left: 3px solid #4a90d9;
+            padding-left: 12px;
+            margin: 0.4em 0;
+            color: #666;
+        }
+
+        /* 表格 */
+        .message-bubble table {
+            border-collapse: collapse;
+            margin: 0.4em 0;
+            font-size: 0.9em;
+        }
+        .message-bubble th, .message-bubble td {
+            border: 1px solid #d0d0d0;
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .message-bubble th {
+            background: #f0f2f5;
+            font-weight: 600;
+        }
+
+        /* 链接 */
+        .message-bubble a {
+            color: #4a90d9;
+            text-decoration: underline;
+        }
+
+        /* 水平线 */
+        .message-bubble hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 0.5em 0;
+        }
+
+        /* ============================================================
+           会话重命名 — contenteditable 编辑状态
+           ============================================================ */
+        .session-title[contenteditable="true"] {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            outline: 1px solid #3498db;
+            cursor: text;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+    </style>
+
+    <!-- Markdown 渲染库 + XSS 防护（必须在本页 JS 运行前加载） -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+</head>
+<body>
+
+    <!-- ============================================================
+    页面结构（HTML — HyperText Markup Language）
+    HTML 负责"有什么"——标题、按钮、输入框等元素
+    CSS  负责"长什么样"——颜色、大小、位置
+    JS   负责"怎么动"——点击、发请求、刷新页面
+
+    整体布局：
+    ┌──────────┬─────────────────────────────┐
+    │  侧边栏   │         聊天区               │
+    │  (280px) │       (剩余宽度)             │
+    │          │                             │
+    │ 会话列表  │   消息显示区                  │
+    │          │                             │
+    │          │   输入框 + 发送按钮            │
+    └──────────┴─────────────────────────────┘
+    ============================================================ -->
+
+    <div class="app-layout">
+
+        <!-- ===== 侧边栏：会话列表 ===== -->
+        <div class="sidebar">
+            <!-- 侧边栏头部：标题 + 新建按钮 -->
+            <div class="sidebar-header">
+                <h3>会话列表</h3>
+                <!-- onclick="createSession()" 表示点击时执行 JS 函数 createSession() -->
+                <button class="btn-new-session" onclick="createSession()" title="新建会话">+</button>
+            </div>
+
+            <!-- 会话列表容器，JS 会往里面动态添加 .session-item 元素 -->
+            <div class="session-list" id="sessionList"></div>
+        </div>
+
+        <!-- ===== 聊天区：消息 + 输入 ===== -->
+        <div class="chat-area">
+            <!-- 聊天区顶部：显示当前会话标题 -->
+            <div class="chat-header" id="chatHeader">个人 AI 助理</div>
+
+            <!-- 消息显示区：JS 会往里面动态添加消息气泡 -->
+            <div class="chat-messages" id="messages">
+                <!-- 初始状态：提示用户新建或选择会话 -->
+                <div class="empty-state">点击左侧 + 号新建会话，开始聊天</div>
+            </div>
+
+            <!-- 输入区 -->
+            <div class="chat-input">
+                <input
+                    type="text"
+                    id="question"
+                    placeholder="输入消息，按 Enter 发送..."
+                    autofocus
+                />
+                <button id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /*
+         * ============================================================
+         * <script> 标签里写的是 JavaScript（简称 JS）
+         * JS 是浏览器里唯一能"动"起来的语言——响应用户操作、调 API、改页面内容
+         *
+         * 如果你熟悉 Python，JS 的核心概念对照：
+         *   Python          JavaScript
+         *   ─────────────   ────────────────
+         *   def fn():       function fn() { }
+         *   await x         await x
+         *   None            null
+         *   dict            object
+         *   list            array
+         *   print()         console.log()
+         *   f"{x}"          `模板字符串 ${x}`
+         *   # 注释          // 单行注释  /* 多行注释 
+         * ============================================================
+         */
+
+        // ============================================================
+        // 1. 全局状态 — 用一个变量记住"当前在哪个会话"
+        // ============================================================
+        // currentSessionId 的值来自后端 POST /sessions 返回的 session_id
+        // 它相当于 Python 里的全局变量，整个页面的函数都会读写它
+        let currentSessionId = null;
+
+        // ============================================================
+        // 2. 获取页面元素引用 — document.getElementById()
+        //    类似于 Python：element = find_widget_by_id("messages")
+        //    拿到引用后就可以读写元素的属性和内容
+        // ============================================================
+        const messagesDiv = document.getElementById("messages");     // 消息显示区
+        const questionInput = document.getElementById("question");   // 输入框
+        const sendBtn = document.getElementById("sendBtn");          // 发送按钮
+        const sessionListDiv = document.getElementById("sessionList"); // 侧边栏会话列表
+        const chatHeader = document.getElementById("chatHeader");    // 聊天区标题
+
+        // ============================================================
+        // 3. 页面初始化 — 页面加载完成后自动执行
+        // ============================================================
+        // window.onload 是浏览器内置事件：整个页面（HTML+CSS+图片）加载完成后触发
+        // 我们把 init 函数绑定到这个事件上，页面一打开就自动初始化
+        window.onload = init;
+
+        /**
+         * init() — 页面初始化入口
+         * 执行流程：
+         *   1. 调 GET /sessions 获取已有会话列表
+         *   2. 如果有会话 → 切换到最近一个
+         *   3. 如果没有 → 自动创建一个新会话
+         */
+        async function init() {
+            // ---- 3.1 获取服务器上已有的会话列表 ----
+            // fetch() 是浏览器内置的 HTTP 客户端，相当于 Python 的 requests.get()，发请求
+            // await 等待网络请求完成（不会卡住页面），拿到响应后再继续
+            const response = await fetch("/sessions");
+
+            // response.json() 把 HTTP 响应体（JSON 字符串）解析成 JS 数组
+            // 后端返回格式：[{session_id, title, message_count, updated_at}, ...]
+            const sessions = await response.json();
+
+            if (sessions.length > 0) {
+                // ---- 3.2 有历史会话：切换到最近一个 ----
+                // 后端已按 updated_at DESC 排序，所以 sessions[0] 就是最近更新的
+                // 先渲染侧边栏列表，再切换到第一个
+                renderSessionList(sessions);
+                await switchSession(sessions[0].session_id);
+            } else {
+                // ---- 3.3 没有历史会话：自动创建一个 ----
+                // 新建会话不需要传参数，后端生成 UUID 返回
+                await createSession();
+            }
+        }
+
+        // ============================================================
+        // 4. loadSessionList() — 从后端拉取会话列表
+        // ============================================================
+        /**
+         * 调 GET /sessions 获取最新会话列表，并更新侧边栏
+         * 这个函数在 创建/删除/发消息 后都会调用，保持侧边栏和服务器同步
+         *
+         * @returns {Array} 会话数组，供调用者进一步使用
+         */
+        async function loadSessionList() {
+            const response = await fetch("/sessions");
+            const sessions = await response.json();
+            // renderSessionList 只负责画 UI，数据还是 sessions
+            renderSessionList(sessions);
+            return sessions;
+        }
+
+        // ============================================================
+        // 5. renderSessionList() — 把会话数组渲染成侧边栏的 DOM 元素
+        // ============================================================
+        /**
+         * DOM = Document Object Model（文档对象模型）
+         * 浏览器把 HTML 解析成一棵树，JS 可以通过 DOM API 操作这棵树（增删改查元素）
+         *
+         * 这个函数做的事情：
+         *   1. 清空侧边栏旧内容
+         *   2. 遍历 sessions 数组
+         *   3. 每个 session 创建一个 <div class="session-item"> 元素
+         *   4. 插到侧边栏里
+         *
+         * @param {Array} sessions — 会话对象数组 [{session_id, title, message_count, updated_at}, ...]
+         */
+        function renderSessionList(sessions) {
+            // ---- 5.1 清空旧列表 ----
+            // innerHTML = "" 相当于把 div 里的内容全部删掉
+            sessionListDiv.innerHTML = "";
+
+            // ---- 5.2 遍历数组，逐条创建 DOM 元素 ----
+            // forEach 相当于 Python: for session in sessions:
+            sessions.forEach(function(session) {
+                // ---- 5.2.1 创建会话条目的外层 div ----
+                const itemDiv = document.createElement("div");
+                // className 设置 CSS class，决定样式
+                itemDiv.className = "session-item";
+                // 如果这个会话是当前选中的，加上 active 类名（高亮显示）
+                if (session.session_id === currentSessionId) {
+                    itemDiv.className += " active";
+                }
+
+                // ---- 5.2.2 创建文字信息区（标题 + 元信息） ----
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "session-info";
+
+                // 标题行：用户第一条消息的前几个字，或 "新会话"
+                const titleDiv = document.createElement("div");
+                titleDiv.className = "session-title";
+                // textContent 设置元素的文字内容，和 Python 的 label["text"] = "xxx" 一样
+                titleDiv.textContent = session.title || "新会话";
+
+                // ---- 双击标题进入编辑模式（会话重命名） ----
+                titleDiv.addEventListener("dblclick", function(e) {
+                    e.stopPropagation();  // 阻止冒泡：双击标题不应该触发 switchSession
+
+                    const sessionId = session.session_id;  // 闭包捕获当前 session_id
+                    const originalTitle = titleDiv.textContent;
+
+                    // 保存函数：调后端 API 持久化新标题
+                    async function saveTitle() {
+                        // 退出编辑模式
+                        titleDiv.contentEditable = "false";
+                        titleDiv.removeEventListener("blur", blurHandler);
+                        titleDiv.removeEventListener("keydown", keyHandler);
+
+                        const newTitle = titleDiv.textContent.trim();
+                        if (!newTitle || newTitle === originalTitle) {
+                            // 空标题 或 没改 → 恢复原标题
+                            titleDiv.textContent = originalTitle;
+                            return;
+                        }
+
+                        // 调后端 PUT /sessions/{id}/rename
+                        const resp = await fetch("/sessions/" + sessionId + "/rename", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ title: newTitle }),
+                        });
+                        const data = await resp.json();
+
+                        if (!data.ok) {
+                            // 后端拒绝（如标题为空）→ 恢复
+                            titleDiv.textContent = originalTitle;
+                            alert(data.error || "重命名失败");
+                            return;
+                        }
+
+                        // 如果重命名的是当前会话，顺手更新顶部标题栏
+                        if (sessionId === currentSessionId) {
+                            chatHeader.textContent = newTitle;
+                        }
+                    }
+
+                    // 失焦时自动保存
+                    function blurHandler() { saveTitle(); }
+                    // Enter 键保存
+                    function keyHandler(e) {
+                        if (e.key === "Enter") {
+                            e.preventDefault();  // 不换行
+                            saveTitle();
+                        }
+                    }
+
+                    // 进入编辑模式
+                    titleDiv.contentEditable = "true";
+                    titleDiv.focus();
+
+                    // 自动选中全部文字，方便用户直接覆盖输入
+                    const range = document.createRange();
+                    range.selectNodeContents(titleDiv);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+
+                    // 绑定保存触发器
+                    titleDiv.addEventListener("blur", blurHandler);
+                    titleDiv.addEventListener("keydown", keyHandler);
+                });
+
+                // 元信息行："5 条消息 · 05-28 14:30"
+                const metaDiv = document.createElement("div");
+                metaDiv.className = "session-meta";
+                // formatTime() 是我们自己写的辅助函数，把 ISO 时间戳转成易读格式
+                metaDiv.textContent = session.message_count + " 条消息 · " + formatTime(session.updated_at);
+
+                // appendChild 把子元素加到父元素里
+                // 结构：infoDiv 包含 titleDiv 和 metaDiv
+                infoDiv.appendChild(titleDiv);
+                infoDiv.appendChild(metaDiv);
+
+                // ---- 5.2.3 创建删除按钮 ----
+                const deleteBtn = document.createElement("button");
+                deleteBtn.className = "btn-delete-session";
+                deleteBtn.textContent = "×";  // × 是乘号，视觉上像关闭按钮
+
+                // onclick 绑定点击事件：点击时执行箭头函数
+                // event.stopPropagation() 阻止事件冒泡——点击删除按钮不应该触发切换会话
+                // 如果不去掉这行，点删除会同时触发 deleteSession() 和 switchSession()
+                deleteBtn.onclick = function(event) {
+                    event.stopPropagation();   // 阻止事件冒泡到父元素 .session-item
+                    deleteSession(session.session_id);
+                };
+
+                // ---- 5.2.4 组装：把子元素加到父 div 里 ----
+                itemDiv.appendChild(infoDiv);
+                itemDiv.appendChild(deleteBtn);
+
+                // ---- 5.2.5 点击会话条目 → 切换到该会话 ----
+                itemDiv.onclick = function() {
+                    switchSession(session.session_id);
+                };
+
+                // ---- 5.2.6 把组装好的条目加到侧边栏 ----
+                sessionListDiv.appendChild(itemDiv);
+            });
+        }
+
+        // ============================================================
+        // 6. switchSession() — 切换到指定会话，加载并显示其消息
+        // ============================================================
+        /**
+         * 切换当前活跃会话的核心函数。
+         * 做的事情：
+         *   1. 更新全局 currentSessionId
+         *   2. 从后端拉取该会话的所有消息（GET /sessions/{id}/messages）
+         *   3. 渲染消息到聊天区
+         *   4. 刷新侧边栏高亮
+         *
+         * @param {string} sessionId — 要切换到的会话 ID
+         */
+        async function switchSession(sessionId) {
+            // ---- 6.1 更新当前会话 ID ----
+            currentSessionId = sessionId;
+
+            // ---- 6.2 从后端加载该会话的消息 ----
+            // 后端返回格式：[{role, content, created_at}, ...]
+            const response = await fetch("/sessions/" + sessionId + "/messages");
+            const messages = await response.json();
+
+            // ---- 6.3 渲染消息 ----
+            renderMessages(messages);
+
+            // ---- 6.4 刷新侧边栏（更新高亮状态） ----
+            // 先拉最新列表再渲染，确保标题等信息也是最新的
+            await loadSessionList();
+
+            // ---- 6.5 更新聊天区标题 ----
+            // 从侧边栏找当前会话的标题（loadSessionList 已经更新了 DOM）
+            updateChatHeader();
+        }
+
+        /**
+         * updateChatHeader() — 根据当前会话更新聊天区顶部标题
+         * 从侧边栏 DOM 中找到当前活跃的 .session-item，读取其标题文字
+         */
+        function updateChatHeader() {
+            // querySelectorAll 用 CSS 选择器查找元素，返回所有匹配的 NodeList
+            // ".session-item.active" 表示：class 同时有 session-item 和 active 的元素
+            const activeItem = document.querySelector(".session-item.active .session-title");
+            if (activeItem) {
+                chatHeader.textContent = activeItem.textContent;
+            } else {
+                chatHeader.textContent = "个人 AI 助理";
+            }
+        }
+
+        // ============================================================
+        // 7. renderMessages() — 把消息数组渲染成聊天气泡
+        // ============================================================
+        /**
+         * 清空消息区，然后根据 messages 数组逐条创建气泡。
+         * 如果消息数组为空，显示"空状态"提示。
+         *
+         * @param {Array} messages — [{role, content, created_at}, ...]
+         */
+        function renderMessages(messages) {
+            // ---- 7.1 清空消息区 ----
+            messagesDiv.innerHTML = "";
+
+            // ---- 7.2 处理空消息列表 ----
+            if (messages.length === 0) {
+                // 创建一个空的提示 div
+                const emptyDiv = document.createElement("div");
+                emptyDiv.className = "empty-state";
+                emptyDiv.textContent = "开始新对话吧！";
+                messagesDiv.appendChild(emptyDiv);
+                return;
+            }
+
+            // ---- 7.3 逐条创建消息气泡 ----
+            // forEach 遍历数组，对每条消息调用 addMessageBubble
+            messages.forEach(function(msg) {
+                // 跳过 system 消息（system prompt 是给 AI 的指令，用户不需要看到）
+                if (msg.role === "system") return;
+
+                // addMessageBubble 创建一条消息的 DOM 结构并加到页面上
+                addMessageBubble(msg.role, msg.content, msg.created_at);
+            });
+        }
+
+        /**
+         * addMessageBubble() — 在消息区末尾追加一条消息气泡
+         *
+         * 每条消息的 HTML 结构：
+         * <div class="message-wrapper user|assistant">
+         *     <div class="message-bubble">消息内容</div>
+         *     <div class="message-time">14:30</div>
+         * </div>
+         *
+         * @param {string} role  — "user" 或 "assistant"，决定气泡颜色和位置
+         * @param {string} text  — 消息文字内容
+         * @param {string} isoTime — ISO 格式时间戳 "2026-05-28T14:30:00"
+         */
+        function addMessageBubble(role, text, isoTime) {
+            // ---- 创建外层包裹 div ----
+            const wrapper = document.createElement("div");
+            wrapper.className = "message-wrapper " + role;  // "message-wrapper user" 或 "message-wrapper assistant"
+
+            // ---- 创建气泡 div ----
+            const bubble = document.createElement("div");
+            bubble.className = "message-bubble";
+
+            // 助手消息：Markdown → HTML 渲染（innerHTML）
+            // 用户消息：纯文本显示（textContent），安全且用户不需要 Markdown
+            if (role === "assistant") {
+                bubble.innerHTML = renderMarkdown(text);
+            } else {
+                bubble.textContent = text;
+            }
+
+            // ---- 创建时间戳 div ----
+            const timeDiv = document.createElement("div");
+            timeDiv.className = "message-time";
+            // formatTime() 把 ISO 时间转成 "HH:MM" 短格式
+            timeDiv.textContent = isoTime ? formatTime(isoTime) : "";
+
+            // ---- 组装 ----
+            wrapper.appendChild(bubble);
+            wrapper.appendChild(timeDiv);
+            messagesDiv.appendChild(wrapper);
+
+            // ---- 自动滚到底部 ----
+            // scrollTop 是当前滚动到的位置，scrollHeight 是整个可滚动区域的高度
+            // 把 scrollTop 设为 scrollHeight 就滚到了最底部
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // ============================================================
+        // 8. createSession() — 创建新会话
+        // ============================================================
+        /**
+         * 调 POST /sessions 创建新会话，然后切换到空聊天界面。
+         * 注意：空会话在数据库中没有任何消息记录，
+         * 所以 GET /sessions 不会返回它。只有发了第一条消息后，
+         * save_message() 写入数据库，这个会话才会出现在侧边栏。
+         */
+        async function createSession() {
+            // ---- 8.1 调后端创建新会话 ----
+            const response = await fetch("/sessions", { method: "POST" });
+            const data = await response.json();        // {session_id: "abc123..."}
+
+            // ---- 8.2 切换到这个空会话 ----
+            currentSessionId = data.session_id;
+
+            // ---- 8.3 清空消息区，显示空状态 ----
+            messagesDiv.innerHTML = "";
+            const emptyDiv = document.createElement("div");
+            emptyDiv.className = "empty-state";
+            emptyDiv.textContent = "新会话，开始聊天吧！";
+            messagesDiv.appendChild(emptyDiv);
+
+            // ---- 8.4 刷新侧边栏 + 更新标题 ----
+            await loadSessionList();
+            chatHeader.textContent = "新会话";
+            questionInput.focus();  // 让输入框获得焦点，用户可以直接打字
+        }
+
+        // ============================================================
+        // 9. deleteSession() — 删除指定会话
+        // ============================================================
+        /**
+         * 调 DELETE /sessions/{id} 删除会话。
+         * 删除后：
+         *   - 如果删的是当前会话 → 自动切换到列表中的第一个会话
+         *   - 如果列表也空了 → 自动创建新会话
+         *
+         * @param {string} sessionId — 要删除的会话 ID
+         */
+        async function deleteSession(sessionId) {
+            // ---- 9.1 确认对话框 ----
+            // confirm() 是浏览器内置函数，弹出确认/取消对话框
+            // 用户点"取消"返回 false，直接 return 不删
+            if (!confirm("确定要删除这个会话吗？此操作不可恢复。")) return;
+
+            // ---- 9.2 调后端删除 ----
+            await fetch("/sessions/" + sessionId, { method: "DELETE" });
+
+            // ---- 9.3 重新加载会话列表 ----
+            const sessions = await loadSessionList();
+
+            // ---- 9.4 如果删的是当前会话，需要切换 ----
+            if (sessionId === currentSessionId) {
+                if (sessions.length > 0) {
+                    // 还有其他会话 → 切换到第一个
+                    await switchSession(sessions[0].session_id);
+                } else {
+                    // 没有会话了 → 自动创建一个
+                    await createSession();
+                }
+            }
+        }
+
+        // ============================================================
+        // 10. createStreamingAssistantBubble() — 创建空助手气泡（流式用）
+        // ============================================================
+        /**
+         * 创建一个空的助手消息气泡，用于流式填充。
+         *
+         * 与 addMessageBubble 的区别：
+         *   - 气泡文字初始为空字符串（等 SSE 流逐步填充）
+         *   - 时间戳初始为空（流结束后才更新）
+         *   - 返回 { bubble, timeDiv } 引用，供 sendMessage 里的流式循环更新
+         *
+         * 类比：先放一个空杯子到桌上，后面逐块倒水进去，而不是等水烧开再端上来。
+         *
+         * @returns {{bubble: HTMLElement, timeDiv: HTMLElement}}
+         *   bubble  — 消息气泡的 DOM 元素（通过 .textContent 更新内容）
+         *   timeDiv — 时间戳的 DOM 元素（流结束后通过 .textContent 设置时间）
+         */
+        function createStreamingAssistantBubble() {
+            // ---- 创建外层包裹 div ----
+            const wrapper = document.createElement("div");
+            wrapper.className = "message-wrapper assistant";
+
+            // ---- 创建气泡 div（初始内容为空） ----
+            const bubble = document.createElement("div");
+            bubble.className = "message-bubble";
+            bubble.textContent = "";  // 空字符串，后续逐步追加
+
+            // ---- 创建时间戳 div（初始为空） ----
+            const timeDiv = document.createElement("div");
+            timeDiv.className = "message-time";
+            timeDiv.textContent = ""; // 流结束后再填
+
+            // ---- 组装 ----
+            wrapper.appendChild(bubble);
+            wrapper.appendChild(timeDiv);
+            messagesDiv.appendChild(wrapper);
+
+            // ---- 自动滚到底部 ----
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            // ---- 返回引用，供调用方更新内容 ----
+            return { bubble: bubble, timeDiv: timeDiv };
+        }
+
+        // ============================================================
+        // 11. sendMessage() — 核心函数：发消息 → 调 API → 流式显示回复
+        // ============================================================
+        /**
+         * 执行流程（流式版）：
+         *   1. 读取输入框内容
+         *   2. 如果还没有会话 → 自动创建一个
+         *   3. 显示用户气泡
+         *   4. 创建一个空的助手气泡（等待流式填充）
+         *   5. 调 POST /chat（带上 session_id, question, stream: true）
+         *   6. 用 ReadableStream 逐块读取 SSE 事件
+         *   7. 每收到一个 chunk 就追加到助手气泡的 textContent
+         *   8. 收到 finished: true 后更新时间戳、刷新侧边栏
+         *   9. 恢复按钮状态
+         */
+        async function sendMessage() {
+            // ---- 11.1 获取用户输入 ----
+            const question = questionInput.value.trim();
+            if (question === "") return;  // 空内容不发送
+
+            // ---- 11.2 如果还没有会话，自动创建 ----
+            if (!currentSessionId) {
+                await createSession();
+            }
+
+            // ---- 11.3 在页面上显示用户消息 ----
+            clearEmptyState();
+            addMessageBubble("user", question, new Date().toISOString());
+
+            // ---- 11.4 清空输入框 + 禁用按钮 ----
+            questionInput.value = "";
+            sendBtn.disabled = true;
+            sendBtn.textContent = "思考中...";
+
+            // ---- 11.5 创建一个空的助手气泡，拿到引用 ----
+            // createStreamingAssistantBubble() 返回 { bubble, timeDiv }
+            // 后续流式循环会不断更新 bubble.textContent
+            const { bubble, timeDiv } = createStreamingAssistantBubble();
+
+            try {
+                // ---- 11.6 调用后端 POST /chat（流式） ----
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        question: question,
+                        stream: true,          // 告诉后端：我要流式输出
+                    }),
+                });
+
+                // ---- 11.7 读取 SSE 流 ----
+                // response.body 是一个 ReadableStream 对象 — 代表"还没接收完的 HTTP 响应体"
+                // getReader() 返回一个 reader，可以逐块读取数据
+                // 类比 Python：打开文件后不是 read() 一次性读完，而是一行一行读
+                const reader = response.body.getReader();
+                // TextDecoder 把字节（Uint8Array）解码成字符串
+                // { stream: true } 让解码器知道"后面还有数据"，正确处理跨块的多字节字符
+                const decoder = new TextDecoder();
+
+                let buffer = "";        // 缓冲区：存放跨 chunk 的不完整行
+                let accumulated = "";   // 累积的完整回复文本（用于显示）
+
+                while (true) {
+                    // reader.read() 返回 { done: bool, value: Uint8Array }
+                    // done=true 表示流结束（服务端关闭了连接）
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    // 把新收到的字节追加到缓冲区
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // SSE 格式：每行以 "data: {json}\n\n" 结束
+                    // 按换行符切割，最后一段可能是不完整的行，留在 buffer 里下次处理
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop() || "";  // 最后一段（可能不完整），放回 buffer
+
+                    for (const line of lines) {
+                        // SSE 数据行都以 "data: " 开头
+                        if (line.startsWith("data: ")) {
+                            const data = JSON.parse(line.slice(6));  // 去掉 "data: " 前缀后解析 JSON
+
+                            if (data.error) {
+                                // 后端返回的错误（如 DeepSeek API 调用失败）
+                                throw new Error(data.error);
+                            }
+
+                            if (data.finished) {
+                                // 流结束：设置最终时间戳
+                                if (data.created_at) {
+                                    timeDiv.textContent = formatTime(data.created_at);
+                                }
+                            } else {
+                                // 正常内容块：追加到累积文本，更新气泡显示
+                                accumulated += data.content;
+                                bubble.innerHTML = renderMarkdown(accumulated);
+                            }
+                        }
+                    }
+
+                    // ---- 每次更新后自动滚到底部 ----
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+
+                // ---- 11.8 刷新侧边栏 ----
+                // 第一次发消息后，该会话才出现在数据库里
+                await loadSessionList();
+                updateChatHeader();
+
+            } catch (error) {
+                // 网络挂了 / 服务器崩了 / 流中断：在气泡里显示错误信息
+                // 如果已经有一些内容了（accumulated 不为空），就保留内容并附加错误
+                if (accumulated) {
+                    bubble.textContent = accumulated + "\n\n[流中断：" + error.message + "]";
+                } else {
+                    bubble.textContent = "网络错误：" + error.message;
+                }
+                timeDiv.textContent = "";
+            }
+
+            // ---- 11.9 恢复按钮 ----
+            sendBtn.disabled = false;
+            sendBtn.textContent = "发送";
+            questionInput.focus();
+        }
+
+        // ============================================================
+        // 12. 工具函数 — clearEmptyState()
+        // ============================================================
+        function clearEmptyState() {
+            // querySelector 返回第一个匹配的元素，没有则返回 null
+            const emptyEl = messagesDiv.querySelector(".empty-state");
+            if (emptyEl) {
+                // remove() 把元素从 DOM 树中删掉
+                emptyEl.remove();
+            }
+        }
+
+        // ============================================================
+        // 13. 工具函数 — formatTime()
+        // ============================================================
+        /**
+         * 把 ISO 格式时间戳转成易读的中文格式。
+         * 规则：
+         *   - 今天的消息 → 只显示 "HH:MM"（如 "14:30"）
+         *   - 今年的消息 → 显示 "MM-DD HH:MM"（如 "05-28 14:30"）
+         *   - 更早的消息 → 显示完整 "YYYY-MM-DD HH:MM"
+         *
+         * @param {string} isoStr — ISO 格式时间戳，如 "2026-05-28T14:30:00"
+         * @returns {string} 格式化后的时间字符串
+         */
+        function formatTime(isoStr) {
+            if (!isoStr) return "";  // 防御：没有时间戳就返回空字符串
+
+            // new Date(isoStr) 把 ISO 字符串解析为 JS 的 Date 对象
+            // Date 对象类似于 Python 的 datetime 对象
+            const date = new Date(isoStr);
+            const now = new Date();
+
+            // getHours() 返回小时(0-23)，getMinutes() 返回分钟(0-59)
+            // toString().padStart(2, "0") 确保两位数：5 → "05"
+            const time = date.getHours().toString().padStart(2, "0") + ":" +
+                         date.getMinutes().toString().padStart(2, "0");
+
+            // getMonth() 返回 0-11，所以 +1
+            const month = (date.getMonth() + 1).toString().padStart(2, "0");
+            const day = date.getDate().toString().padStart(2, "0");
+
+            // toDateString() 返回 "Thu May 28 2026" 格式，用于比较是不是同一天
+            if (date.toDateString() === now.toDateString()) {
+                // 今天的消息，只显示时间
+                return time;
+            }
+
+            // getFullYear() 返回四位年份
+            if (date.getFullYear() === now.getFullYear()) {
+                // 今年的消息，显示月-日 时间
+                return month + "-" + day + " " + time;
+            }
+
+            // 更早的消息，显示完整日期
+            return date.getFullYear() + "-" + month + "-" + day + " " + time;
+        }
+
+        // ============================================================
+        // 14. renderMarkdown() — Markdown 文本 → 安全 HTML
+        // ============================================================
+        /**
+         * 把 Markdown 文本转为安全的 HTML，用于助手消息渲染。
+         *
+         * 流水线：Markdown 文本 → marked.parse() → HTML 字符串 → DOMPurify.sanitize() → 安全 HTML
+         *
+         * marked.parse() 配置：
+         *   - gfm: true  → GitHub Flavored Markdown（支持表格、任务列表、删除线）
+         *   - breaks: true → 单个换行符 \n 也转为 <br>（聊天场景更自然）
+         *
+         * DOMPurify.sanitize()：移除 <script>、onerror 等 XSS 攻击向量
+         *   即使 DeepSeek 被诱导返回恶意 HTML，也会被过滤掉。
+         *
+         * @param {string} text — 原始 Markdown 文本
+         * @returns {string} — 安全的 HTML 字符串
+         */
+        function renderMarkdown(text) {
+            if (!text) return "";
+            const rawHtml = marked.parse(text, { gfm: true, breaks: true });
+            return DOMPurify.sanitize(rawHtml);
+        }
+
+        // ============================================================
+        // 15. 键盘事件 — 按 Enter 发送消息
+        // ============================================================
+        // addEventListener("keydown", fn) 给元素绑定"按键被按下"事件
+        // 当用户在输入框按下任意键时，浏览器调用我们提供的匿名函数
+        questionInput.addEventListener("keydown", function(event) {
+            // event.key 是按下的是哪个键，如 "Enter"、"Escape"
+            // !event.shiftKey：按住 Shift 再按 Enter 不触发发送（方便用户换行）
+            if (event.key === "Enter" && !event.shiftKey) {
+                // preventDefault() 阻止浏览器对这个按键的默认行为
+                // 输入框里按 Enter 默认可能会触发表单提交
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+
+</body>
+</html>
