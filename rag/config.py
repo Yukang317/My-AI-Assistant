@@ -45,15 +45,29 @@ class Config:
     EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", "")
     EMBEDDING_API_MODEL = os.getenv("EMBEDDING_API_MODEL", "text-embedding-3-small")
 
+    # 当前生效的模型名（根据 mode 自动选，写入 Milvus 的 embedding_model 字段）
+    @classmethod
+    def get_embedding_model_name(cls) -> str:
+        """返回当前正在使用的 embedding 模型名，用于写入 Milvus"""
+        return cls.EMBEDDING_LOCAL_MODEL if cls.EMBEDDING_MODE == "local" else cls.EMBEDDING_API_MODEL
+
     # ── 3. Milvus 向量数据库配置 ──────────────────────────────────
     MILVUS_HOST = os.getenv("MILVUS_HOST", "127.0.0.1")
     MILVUS_PORT = os.getenv("MILVUS_PORT", "19530")
     MILVUS_USER = os.getenv("MILVUS_USER", "root")
     MILVUS_PASSWORD = os.getenv("MILVUS_PASSWORD", "admin123")
 
+    # Milvus 数据库名
+    MILVUS_DB_NAME = os.getenv("MILVUS_DB_NAME", "personal_assistant")
+
     # 两个 Collection：父集合存完整上下文，子集合做精准检索
     MILVUS_PARENT_COLLECTION = os.getenv("MILVUS_PARENT_COLLECTION", "parent_chunks")
     MILVUS_CHILD_COLLECTION = os.getenv("MILVUS_CHILD_COLLECTION", "child_chunks")
+
+    # 索引类型与度量方式（⚠️ 不要随便改，原因见阶段5技术方案 5.4.2）
+    MILVUS_INDEX_TYPE = os.getenv("MILVUS_INDEX_TYPE", "IVF_FLAT")    # 倒排索引，百万级以下最优
+    # 必须用 IP（内积），因为 BGE 已做 L2 归一化。用 COSINE 会多做一次模长除法，慢一倍
+    MILVUS_METRIC_TYPE = os.getenv("MILVUS_METRIC_TYPE", "IP")
 
     # 搜索参数
     MILVUS_SEARCH_NPROBE = int(os.getenv("MILVUS_SEARCH_NPROBE", "64"))
@@ -115,6 +129,8 @@ if __name__ == "__main__":
     print(f"Embedding 模型: {Config.EMBEDDING_LOCAL_MODEL}")
     print(f"向量维度: {Config.EMBEDDING_DIM}")
     print(f"Milvus: {Config.MILVUS_HOST}:{Config.MILVUS_PORT}")
+    print(f"  索引类型: {Config.MILVUS_INDEX_TYPE}, 度量方式: {Config.MILVUS_METRIC_TYPE}")
+    print(f"  nlist: {Config.MILVUS_INDEX_NLIST}, nprobe: {Config.MILVUS_SEARCH_NPROBE}")
     print(f"PostgreSQL: {Config.PG_HOST}:{Config.PG_PORT}/{Config.PG_DATABASE}")
     print(f"父块大小: {Config.PARENT_CHUNK_SIZE}, 重叠: {Config.PARENT_CHUNK_OVERLAP}")
     print(f"子块大小: {Config.CHILD_CHUNK_SIZE}, 重叠: {Config.CHILD_CHUNK_OVERLAP}")
