@@ -3,11 +3,11 @@ from rag.config import Config
 
 
 class EmbeddingService:
-      """
-      文本向量化服务
-      - local 模式：加载 BGE 模型到内存（SentenceTransformer）
-      - api 模式：调用远程 embedding API
-      """
+    """
+    文本向量化服务
+    - local 模式：加载 BGE 模型到内存（SentenceTransformer）
+    - api 模式：调用远程 embedding API
+    """
     def __init__(self, mode: str = Config.EMBEDDING_MODE):
         self.mode = mode
         self.model = None # local 模式的模型实例
