@@ -125,9 +125,10 @@ class BM25Index:
             RuntimeError: 如果索引尚未构建（需先调用 build_index）
         """
         # TODO(human): 检查索引状态 → 对 query 分词 → get_scores → 取 top_k → 组装返回
-        # 1. 检查索引是否构建
+        # 1. 检查索引是否构建，未构建则返回空结果
         if not self.is_built():
-            raise RuntimeError("索引尚未构建，请先调用 build_index")
+            logger.warning("索引尚未构建，请先调用 build_index")
+            return []
 
         # 2. 查询分词
         tokenized_query = self._tokenize(query)

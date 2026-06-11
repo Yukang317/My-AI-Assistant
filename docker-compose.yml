@@ -1,0 +1,100 @@
+# ============================================================
+# 个人助手 RAG 系统 — Docker 基础设施
+# 4 个容器：etcd（协调）→ MinIO（存储）→ Milvus（向量库）+ PG（元数据）
+# ============================================================
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5    # etcd 官方镜像，v3.5.5 稳定版
+    container_name: pa-etcd             # personal_assistant etcd
+    environment:  # 社区推荐配置
+      - ETCD_AUTO_COMPACTION_MODE=revision        # 自动压缩模式：按修订号删旧版本
+      - ETCD_AUTO_COMPACTION_RETENTION=1000        # 自动压缩保留：每个key保留最近的 1000 个修订号
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296       # 最大存储 4GB，超了就写操作拒绝并报警
+      - ETCD_SNAPSHOT_COUNT=50000                # 每 50000 个条目保存一次快照到磁盘
+    volumes:
+      - ./data/etcd:/etcd                   # 数据存宿主机，容器删了数据不丢
+    command:    # etcd 启动参数，指定监听地址和数据目录
+      # # 数据存 /etcd 目录。监听所有网络接口，端口 2379。告诉外界"我在 127.0.0.1:2379"。
+      - etcd
+      - --name 
+      - personal_assistant
+      - --data-dir 
+      - /etcd
+      - --listen-client-urls 
+      - http://0.0.0.0:2379      
+      - --advertise-client-urls 
+      - http://127.0.0.1:2379
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s   # 每 30 秒检查一次
+      timeout: 20s    # 超时时间 20 秒
+      retries: 3      # 重试次数 3 次
+    # 不写这个的话默认是 bridge 模式：每个容器有自己的独立 localhost
+    network_mode: host
+
+  # 兼容 AWS S3 API 的对象存储。本项目两个用途：① Milvus 内部用它存向量索引文件、② 我们上传的文档原始文件也存在这里
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z    # MinIO 官方镜像，2023-03-20 发布版
+    container_name: pa-minio             # personal_assistant minio
+    environment:      # 登录凭证
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ./data/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"     # MinIO 启动参数，指定数据目录和控制台地址（web管理界面端口）
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    network_mode: host
+
+  milvus:
+    container_name: pa-milvus             # personal_assistant milvus
+    image: milvusdb/milvus:v2.4.0    # Milvus 官方镜像，v2.4.0 稳定版
+    command: ["milvus", "run", "standalone"]    # 以 standalone 模式启动
+    # Linux 内核有一个安全机制叫 seccomp，限制程序能调用哪些系统调用。Milvus 底层是 C++，用了一些默认被限制的系统调用（比如 unshare），不加这一行 Milvus 会启动失败。
+    security_opt:     # 关闭内核安全限制
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: 127.0.0.1:2379        # 告诉 Milvus etcd在哪
+      MINIO_ADDRESS: 127.0.0.1:9000        # 告诉 Milvus MinIO在哪
+      MINIO_ACCESS_KEY_ID: minioadmin        # MinIO 登录账号
+      MINIO_SECRET_ACCESS_KEY: minioadmin    # MinIO 登录密码
+    volumes:
+      - ./data/milvus:/var/lib/milvus          # 数据存宿主机，容器删了数据不丢
+    healthcheck:
+      # 19530 是 Milvus 的 gRPC 端口（给你的 Python 代码连的）。健康检查 HTTP 接口在 9091 端口，路径是 /healthz
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 90s   # Milvus 启动慢（要连 etcd、连MinIO、加载索引），大概要 30-60 秒才能就绪
+    network_mode: host
+    # Docker Compose 会先启动 etcd 和 minio，等它们 healthcheck 通过后再启动 milvus。没有这个顺序的话，Milvus 会在 etcd 还没就绪时就尝试连接，然后崩溃退出。
+    depends_on:
+      etcd:
+        condition: service_healthy      # 不只是“服务已启动”，而是“健康检查通过”
+      minio:
+        condition: service_healthy      # 不只是“服务已启动”，而是“健康检查通过”
+
+  postgres:
+    container_name: pa-postgres             # personal_assistant postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres       # 默认超级用户
+      POSTGRES_PASSWORD: postgres       # 默认之前写的密码为空，但是报错了，官方要求不为空。
+      # PG 容器第一次启动时，除了默认的 postgres 库之外，会自动再创建personal_assistant 库。这样你的代码里 PG_DATABASE=personal_assistant 直接就能连上。
+      POSTGRES_DB: personal_assistant   # 自动创建这个数据库
+    ports:
+      - "15433:5432"      # 映射端口，外部访问 15433，容器内部 5432
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+

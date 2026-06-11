@@ -46,12 +46,11 @@ class EmbeddingService:
             # 记得开归一化
             return self.model.encode(texts, normalize_embeddings=True).tolist()
         elif self.mode == "api":
-        #     response = self.client.embeddings.create(
-        #         model=Config.EMBEDDING_API_MODEL,
-        #         input=texts
-        #     )
-        #     return [data.embedding for data in response.data]
-            raise ValueError(f"API 模式暂未实现")
+            response = self.client.embeddings.create(
+                model=Config.EMBEDDING_API_MODEL,
+                input=texts
+            )
+            return [data.embedding for data in response.data]
         else:
             raise ValueError(f"不支持的 embedding 模式：{self.mode}")
 

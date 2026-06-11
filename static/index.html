@@ -30,7 +30,7 @@
         }
 
         /* ============================================================
-           侧边栏 — 会话列表
+           侧边栏 — 会话列表 + 知识库
            ============================================================ */
         .sidebar {
             width: 280px;                   /* 固定宽度 */
@@ -79,6 +79,7 @@
         .session-list {
             flex: 1;                         /* 占满侧边栏剩余高度 */
             overflow-y: auto;                /* 会话多了出现滚动条 */
+            min-height: 0;                   /* 允许 flex 压缩，否则 overflow 不生效 */
         }
 
         /* 单个会话条目 */
@@ -146,6 +147,130 @@
         }
 
         /* ============================================================
+           知识库区域（侧边栏底部）
+           ============================================================ */
+        .kb-section {
+            flex-shrink: 0;                  /* 不被压缩 */
+            max-height: 35%;                 /* 最多占侧边栏 35% */
+            display: flex;
+            flex-direction: column;
+            border-top: 2px solid #3d5166;   /* 分隔线，比普通 border 粗 */
+        }
+
+        /* 知识库标题栏 */
+        .kb-header {
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #bdc3c7;
+            flex-shrink: 0;
+        }
+
+        /* 上传文档按钮 */
+        .btn-upload {
+            width: 26px;
+            height: 26px;
+            border-radius: 4px;
+            border: 1px dashed #5a7a96;
+            background: transparent;
+            color: #5a7a96;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .btn-upload:hover {
+            border-color: #3498db;
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        /* 文档列表：可滚动 */
+        .kb-doc-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* 空知识库提示 */
+        .kb-empty {
+            padding: 16px;
+            text-align: center;
+            color: #5a7a96;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* 单个文档条目 */
+        .doc-item {
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #34495e;
+            transition: background 0.15s;
+        }
+
+        .doc-item:hover {
+            background: #34495e;
+        }
+
+        /* 文档信息区 */
+        .doc-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .doc-name {
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc-meta {
+            font-size: 10px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        /* 文档删除按钮 */
+        .btn-delete-doc {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: none;
+            background: transparent;
+            color: #7f8c8d;
+            font-size: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: none;
+        }
+
+        .doc-item:hover .btn-delete-doc {
+            display: block;
+        }
+
+        .btn-delete-doc:hover {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        /* 上传中状态 */
+        .doc-item.uploading .doc-name {
+            color: #3498db;
+        }
+
+        /* ============================================================
            聊天区（右侧主体）
            ============================================================ */
         .chat-area {
@@ -160,10 +285,70 @@
         .chat-header {
             background: #4a90d9;
             color: #fff;
-            padding: 16px 20px;
+            padding: 12px 20px;
             font-size: 16px;
             font-weight: 600;
             flex-shrink: 0;                  /* 不参与压缩 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           RAG 知识库开关 — CSS 纯实现 toggle 滑块
+           ═══════════════════════════════════════════════════════════ */
+        .rag-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 400;
+            user-select: none;               /* 禁止选中文字 */
+            opacity: 0.85;
+            transition: opacity 0.15s;
+        }
+
+        .rag-toggle:hover {
+            opacity: 1;
+        }
+
+        /* 隐藏原生 checkbox，用自定义滑块代替 */
+        .rag-toggle input {
+            display: none;
+        }
+
+        /* 滑块轨道 */
+        .rag-toggle-slider {
+            width: 38px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        /* 滑块上的圆形按钮 */
+        .rag-toggle-slider::after {
+            content: "";
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        /* 开启状态：轨道变绿，滑块右移 */
+        .rag-toggle input:checked + .rag-toggle-slider {
+            background: #2ecc71;
+        }
+
+        .rag-toggle input:checked + .rag-toggle-slider::after {
+            transform: translateX(18px);
         }
 
         /* ============================================================
@@ -233,6 +418,84 @@
             font-size: 15px;
         }
 
+        /* ═══════════════════════════════════════════════════════════
+           来源文档卡片（RAG 模式下展示引用了哪些文档）
+           ═══════════════════════════════════════════════════════════ */
+        .sources-card {
+            align-self: flex-start;
+            max-width: 85%;
+            background: #fef9e7;             /* 淡黄色背景，和灰/蓝气泡区分 */
+            border: 1px solid #f9e79f;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        /* 来源卡片标题栏（可点击展开/折叠） */
+        .sources-card-header {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #7d6608;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .sources-card-header:hover {
+            background: #fef5d4;
+        }
+
+        .sources-card-arrow {
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        /* 折叠状态：箭头向下，展开状态：箭头向上 */
+        .sources-card.collapsed .sources-card-body {
+            display: none;
+        }
+        .sources-card.collapsed .sources-card-arrow {
+            transform: rotate(-90deg);
+        }
+
+        /* 来源列表 */
+        .sources-card-body {
+            border-top: 1px solid #f9e79f;
+        }
+
+        /* 单个来源条目 */
+        .source-item {
+            padding: 6px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #fdebd0;
+            gap: 8px;
+        }
+
+        .source-item:last-child {
+            border-bottom: none;
+        }
+
+        .source-name {
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .source-score {
+            color: #b7950b;
+            font-weight: 600;
+            font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         /* ============================================================
            输入区
            ============================================================ */
@@ -241,6 +504,7 @@
             padding: 12px 16px;
             border-top: 1px solid #e0e0e0;
             gap: 10px;
+            align-items: center;
             flex-shrink: 0;
         }
 
@@ -276,6 +540,24 @@
             background: #a0c0e0;
             cursor: not-allowed;
         }
+
+        /* 输入区的 RAG 状态指示 */
+        .rag-indicator {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #e8f8f5;
+            color: #1abc9c;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: none;                   /* 默认隐藏，RAG 开启时显示 */
+            font-weight: 500;
+        }
+
+        .rag-indicator.active {
+            display: inline-block;
+        }
+
         /* ============================================================
            Markdown 内容样式 — 代码块、列表、表格等
            ============================================================ */
@@ -366,9 +648,9 @@
         }
     </style>
 
-    <!-- Markdown 渲染库 + XSS 防护（必须在本页 JS 运行前加载） -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <!-- Markdown 渲染库 + XSS 防护（本地文件，避免 CDN 被墙） -->
+    <script src="/static/marked.min.js"></script>
+    <script src="/static/purify.min.js"></script>
 </head>
 <body>
 
@@ -379,19 +661,22 @@
     JS   负责"怎么动"——点击、发请求、刷新页面
 
     整体布局：
-    ┌──────────┬─────────────────────────────┐
-    │  侧边栏   │         聊天区               │
-    │  (280px) │       (剩余宽度)             │
-    │          │                             │
-    │ 会话列表  │   消息显示区                  │
-    │          │                             │
-    │          │   输入框 + 发送按钮            │
-    └──────────┴─────────────────────────────┘
+    ┌────────────┬──────────────────────────────────┐
+    │  侧边栏     │         聊天区                    │
+    │  (280px)   │       (剩余宽度)                  │
+    │            │                                  │
+    │ ─────────  │  聊天标题栏        [📚 RAG 开关]  │
+    │ 会话列表    │  ─────────────────────────────── │
+    │            │  消息显示区（含来源文档卡片）        │
+    │ ─────────  │                                  │
+    │ 📚 知识库   │  输入框 + RAG 指示 + 发送按钮      │
+    │ 文档列表    │                                  │
+    └────────────┴──────────────────────────────────┘
     ============================================================ -->
 
     <div class="app-layout">
 
-        <!-- ===== 侧边栏：会话列表 ===== -->
+        <!-- ===== 侧边栏：会话列表 + 知识库 ===== -->
         <div class="sidebar">
             <!-- 侧边栏头部：标题 + 新建按钮 -->
             <div class="sidebar-header">
@@ -402,12 +687,42 @@
 
             <!-- 会话列表容器，JS 会往里面动态添加 .session-item 元素 -->
             <div class="session-list" id="sessionList"></div>
+
+            <!-- ═══════════════════════════════════════════════════════
+            知识库区域（侧边栏底部）
+            ═══════════════════════════════════════════════════════ -->
+            <div class="kb-section">
+                <div class="kb-header">
+                    <span>📚 知识库</span>
+                    <button class="btn-upload" onclick="triggerUpload()" title="上传文档">+</button>
+                </div>
+                <!-- 文档列表，JS 动态填充 -->
+                <div class="kb-doc-list" id="docList">
+                    <div class="kb-empty">暂无文档<br>点击 + 上传</div>
+                </div>
+                <!-- 隐藏的文件选择器，点击上传按钮时触发 -->
+                <input
+                    type="file"
+                    id="fileInput"
+                    style="display: none"
+                    accept=".txt,.pdf,.md,.docx,.csv,.json,.html,.xml,.pptx,.xlsx"
+                    onchange="handleFileSelect(event)"
+                />
+            </div>
         </div>
 
         <!-- ===== 聊天区：消息 + 输入 ===== -->
         <div class="chat-area">
-            <!-- 聊天区顶部：显示当前会话标题 -->
-            <div class="chat-header" id="chatHeader">个人 AI 助理</div>
+            <!-- 聊天区顶部：标题 + RAG 知识库开关 -->
+            <div class="chat-header">
+                <span id="chatHeaderTitle">个人 AI 助理</span>
+                <!-- RAG 知识库 toggle 开关 -->
+                <label class="rag-toggle" title="开启后，AI 会检索知识库中的文档来回答问题">
+                    <span>📚 知识库</span>
+                    <input type="checkbox" id="ragToggle" onchange="toggleRag()">
+                    <span class="rag-toggle-slider"></span>
+                </label>
+            </div>
 
             <!-- 消息显示区：JS 会往里面动态添加消息气泡 -->
             <div class="chat-messages" id="messages">
@@ -423,6 +738,8 @@
                     placeholder="输入消息，按 Enter 发送..."
                     autofocus
                 />
+                <!-- RAG 开启时显示绿色提示标签 -->
+                <span class="rag-indicator" id="ragIndicator">📚 知识库</span>
                 <button id="sendBtn" onclick="sendMessage()">发送</button>
             </div>
         </div>
@@ -444,27 +761,34 @@
          *   list            array
          *   print()         console.log()
          *   f"{x}"          `模板字符串 ${x}`
-         *   # 注释          // 单行注释  /* 多行注释 
+         *   # 注释          // 单行注释  （多行注释用斜杠星号包裹）
          * ============================================================
          */
 
         // ============================================================
-        // 1. 全局状态 — 用一个变量记住"当前在哪个会话"
+        // 1. 全局状态
         // ============================================================
         // currentSessionId 的值来自后端 POST /sessions 返回的 session_id
         // 它相当于 Python 里的全局变量，整个页面的函数都会读写它
         let currentSessionId = null;
+
+        // 🆕 RAG 知识库开关：false=普通聊天，true=检索增强生成
+        let useRag = false;
 
         // ============================================================
         // 2. 获取页面元素引用 — document.getElementById()
         //    类似于 Python：element = find_widget_by_id("messages")
         //    拿到引用后就可以读写元素的属性和内容
         // ============================================================
-        const messagesDiv = document.getElementById("messages");     // 消息显示区
-        const questionInput = document.getElementById("question");   // 输入框
-        const sendBtn = document.getElementById("sendBtn");          // 发送按钮
-        const sessionListDiv = document.getElementById("sessionList"); // 侧边栏会话列表
-        const chatHeader = document.getElementById("chatHeader");    // 聊天区标题
+        const messagesDiv = document.getElementById("messages");        // 消息显示区
+        const questionInput = document.getElementById("question");      // 输入框
+        const sendBtn = document.getElementById("sendBtn");             // 发送按钮
+        const sessionListDiv = document.getElementById("sessionList");  // 侧边栏会话列表
+        const chatHeaderTitle = document.getElementById("chatHeaderTitle"); // 聊天区标题文字
+        const ragToggle = document.getElementById("ragToggle");         // RAG 开关 checkbox
+        const ragIndicator = document.getElementById("ragIndicator");   // 输入区 RAG 提示
+        const docListDiv = document.getElementById("docList");          // 知识库文档列表
+        const fileInput = document.getElementById("fileInput");         // 隐藏的文件选择器
 
         // ============================================================
         // 3. 页面初始化 — 页面加载完成后自动执行
@@ -479,6 +803,7 @@
          *   1. 调 GET /sessions 获取已有会话列表
          *   2. 如果有会话 → 切换到最近一个
          *   3. 如果没有 → 自动创建一个新会话
+         *   4. 🆕 加载知识库文档列表
          */
         async function init() {
             // ---- 3.1 获取服务器上已有的会话列表 ----
@@ -501,6 +826,9 @@
                 // 新建会话不需要传参数，后端生成 UUID 返回
                 await createSession();
             }
+
+            // ---- 3.4 🆕 加载知识库文档列表 ----
+            await loadDocuments();
         }
 
         // ============================================================
@@ -600,7 +928,7 @@
 
                         // 如果重命名的是当前会话，顺手更新顶部标题栏
                         if (sessionId === currentSessionId) {
-                            chatHeader.textContent = newTitle;
+                            chatHeaderTitle.textContent = newTitle;
                         }
                     }
 
@@ -711,9 +1039,9 @@
             // ".session-item.active" 表示：class 同时有 session-item 和 active 的元素
             const activeItem = document.querySelector(".session-item.active .session-title");
             if (activeItem) {
-                chatHeader.textContent = activeItem.textContent;
+                chatHeaderTitle.textContent = activeItem.textContent;
             } else {
-                chatHeader.textContent = "个人 AI 助理";
+                chatHeaderTitle.textContent = "个人 AI 助理";
             }
         }
 
@@ -824,7 +1152,7 @@
 
             // ---- 8.4 刷新侧边栏 + 更新标题 ----
             await loadSessionList();
-            chatHeader.textContent = "新会话";
+            chatHeaderTitle.textContent = "新会话";
             questionInput.focus();  // 让输入框获得焦点，用户可以直接打字
         }
 
@@ -872,12 +1200,13 @@
          * 与 addMessageBubble 的区别：
          *   - 气泡文字初始为空字符串（等 SSE 流逐步填充）
          *   - 时间戳初始为空（流结束后才更新）
-         *   - 返回 { bubble, timeDiv } 引用，供 sendMessage 里的流式循环更新
+         *   - 🆕 返回 wrapper 引用（RAG 模式下需要在其前面插入来源卡片）
          *
          * 类比：先放一个空杯子到桌上，后面逐块倒水进去，而不是等水烧开再端上来。
          *
-         * @returns {{bubble: HTMLElement, timeDiv: HTMLElement}}
-         *   bubble  — 消息气泡的 DOM 元素（通过 .textContent 更新内容）
+         * @returns {{wrapper: HTMLElement, bubble: HTMLElement, timeDiv: HTMLElement}}
+         *   wrapper — 消息包裹层的 DOM 元素（整个一行消息的容器）
+         *   bubble  — 消息气泡的 DOM 元素（通过 .innerHTML 更新内容）
          *   timeDiv — 时间戳的 DOM 元素（流结束后通过 .textContent 设置时间）
          */
         function createStreamingAssistantBubble() {
@@ -903,24 +1232,335 @@
             // ---- 自动滚到底部 ----
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-            // ---- 返回引用，供调用方更新内容 ----
-            return { bubble: bubble, timeDiv: timeDiv };
+            // ---- 🆕 同时返回 wrapper 引用，供 RAG 模式在它前面插入来源卡片 ----
+            return { wrapper: wrapper, bubble: bubble, timeDiv: timeDiv };
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // 🆕 RAG 相关函数
+        // ────────────────────────────────────────────────────────────
+
+        /**
+         * toggleRag() — 切换 RAG 知识库开关
+         *
+         * 只改全局状态 + 更新 UI 提示，不影响正在进行的流式请求
+         * （useRag 的值在 sendMessage 调用时被捕获到请求体里）。
+         */
+        function toggleRag() {
+            useRag = ragToggle.checked;
+            // 更新输入区的 RAG 提示标签
+            if (useRag) {
+                ragIndicator.classList.add("active");
+            } else {
+                ragIndicator.classList.remove("active");
+            }
+        }
+
+        /**
+         * triggerUpload() — 触发隐藏的文件选择器
+         *
+         * 点击知识库区域的 + 按钮时调用，弹出系统文件选择对话框。
+         */
+        function triggerUpload() {
+            fileInput.click();
+        }
+
+        /**
+         * handleFileSelect(event) — 文件选择后的回调
+         *
+         * 从 event.target.files 读取用户选择的文件，调 uploadDocument 上传。
+         * 上传完成后重置 input.value，允许再次选择同一个文件。
+         *
+         * @param {Event} event — 文件 input 的 change 事件
+         */
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                await uploadDocument(file);
+            } catch (error) {
+                alert("上传失败: " + error.message);
+            }
+
+            // 重置 input 的值。如果不重置，再次选择同一个文件时不会触发 change 事件
+            event.target.value = "";
+        }
+
+        /**
+         * uploadDocument(file) — 上传文档到知识库
+         *
+         * 构建 FormData → POST /api/documents/upload → 刷新文档列表。
+         *
+         * @param {File} file — 浏览器 File 对象（含 name, size, type 等属性）
+         */
+        async function uploadDocument(file) {
+            // ---- 构建 multipart/form-data 请求体 ----
+            // FormData 会自动设置 Content-Type: multipart/form-data; boundary=...
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch("/api/documents/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(errText || "HTTP " + response.status);
+            }
+
+            const result = await response.json();
+
+            if (result.status === "skipped") {
+                // MD5 去重：文件内容相同，后端跳过处理
+                console.log("文件已存在，跳过: " + file.name);
+            }
+
+            // ---- 刷新侧边栏文档列表 ----
+            await loadDocuments();
+        }
+
+        /**
+         * loadDocuments() — 从后端拉取知识库文档列表
+         *
+         * 调 GET /api/documents，然后渲染到侧边栏的 .kb-doc-list 中。
+         */
+        async function loadDocuments() {
+            try {
+                const response = await fetch("/api/documents");
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                const docs = await response.json();
+                renderDocumentList(docs);
+            } catch (error) {
+                console.log("加载文档列表失败（RAG 服务可能未启动）: " + error.message);
+                // 静默失败——RAG 服务未启动时文档列表为空，不影响普通聊天
+                renderDocumentList([]);
+            }
+        }
+
+        /**
+         * renderDocumentList(docs) — 把文档数组渲染成侧边栏的 DOM 元素
+         *
+         * 每个文档显示：文件名 + 文件大小/日期 + 删除按钮。
+         * 空数组时显示"暂无文档"提示。
+         *
+         * @param {Array} docs — DocumentInfo 数组
+         */
+        function renderDocumentList(docs) {
+            docListDiv.innerHTML = "";
+
+            if (docs.length === 0) {
+                const emptyDiv = document.createElement("div");
+                emptyDiv.className = "kb-empty";
+                emptyDiv.textContent = "暂无文档\n点击 + 上传";
+                docListDiv.appendChild(emptyDiv);
+                return;
+            }
+
+            docs.forEach(function(doc) {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "doc-item";
+
+                // 文档信息区
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "doc-info";
+
+                const nameDiv = document.createElement("div");
+                nameDiv.className = "doc-name";
+                nameDiv.textContent = doc.filename;
+                // tooltip 显示完整文件名
+                nameDiv.title = doc.filename;
+
+                const metaDiv = document.createElement("div");
+                metaDiv.className = "doc-meta";
+                // 显示：文件大小 · 上传日期
+                metaDiv.textContent = formatFileSize(doc.file_size) + " · " + formatTime(doc.created_at);
+
+                infoDiv.appendChild(nameDiv);
+                infoDiv.appendChild(metaDiv);
+
+                // 删除按钮
+                const deleteBtn = document.createElement("button");
+                deleteBtn.className = "btn-delete-doc";
+                deleteBtn.textContent = "×";
+                deleteBtn.title = "删除文档";
+                deleteBtn.onclick = function(event) {
+                    event.stopPropagation();  // 阻止冒泡
+                    deleteDocument(doc.object_key, doc.filename);
+                };
+
+                itemDiv.appendChild(infoDiv);
+                itemDiv.appendChild(deleteBtn);
+                docListDiv.appendChild(itemDiv);
+            });
+        }
+
+        /**
+         * deleteDocument(objectKey, filename) — 从知识库删除文档
+         *
+         * 调 DELETE /api/documents/{object_key}。
+         * object_key 含 /（如 "documents/2026/06/file.txt"），
+         * 所以后端用了 :path 转换器，前端要 encodeURIComponent 转义。
+         *
+         * @param {string} objectKey — MinIO 对象键（后端 :path 路由参数）
+         * @param {string} filename — 文件名（仅用于确认对话框提示）
+         */
+        async function deleteDocument(objectKey, filename) {
+            if (!confirm("确定要删除文档 \"" + filename + "\" 吗？\n将从知识库中移除该文档的所有内容。")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    "/api/documents/" + encodeURIComponent(objectKey),
+                    { method: "DELETE" }
+                );
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || "HTTP " + response.status);
+                }
+
+                const result = await response.json();
+                console.log("已删除文档:", filename,
+                    "父块:", result.parent_deleted,
+                    "子块:", result.child_deleted);
+
+                // 刷新文档列表
+                await loadDocuments();
+            } catch (error) {
+                alert("删除失败: " + error.message);
+            }
+        }
+
+        /**
+         * showSourcesCard(sources) — 在消息区插入来源文档卡片
+         *
+         * RAG 模式下，收到 sources 类型的 SSE 事件时调用。
+         * 卡片插入到助手消息包裹层（wrapper）之前，显示为淡黄色卡片。
+         * 默认展开，用户可以点击标题栏折叠。
+         *
+         * @param {Array} sources — 来源文档数组
+         *        [{doc_path_name, content, score, child_id, collection}, ...]
+         * @param {HTMLElement} insertBeforeEl — 插入位置参考元素（助手气泡的 wrapper）
+         * @returns {HTMLElement} 创建的来源卡片 DOM 元素
+         */
+        function showSourcesCard(sources, insertBeforeEl) {
+            if (!sources || sources.length === 0) return null;
+
+            // ---- 创建卡片容器 ----
+            const card = document.createElement("div");
+            card.className = "sources-card";
+
+            // ---- 标题栏（点击折叠/展开） ----
+            const header = document.createElement("div");
+            header.className = "sources-card-header";
+            header.innerHTML = "📖 参考了 <strong>" + sources.length + "</strong> 个文档片段";
+
+            const arrow = document.createElement("span");
+            arrow.className = "sources-card-arrow";
+            arrow.textContent = "▼";
+            header.appendChild(arrow);
+
+            header.onclick = function() {
+                // 切换折叠状态
+                card.classList.toggle("collapsed");
+            };
+
+            // ---- 来源列表 ----
+            const body = document.createElement("div");
+            body.className = "sources-card-body";
+
+            sources.forEach(function(src) {
+                const item = document.createElement("div");
+                item.className = "source-item";
+
+                // 从 doc_path_name 提取文件名
+                // "documents/2026/06/笔记.txt" → "笔记.txt"
+                const fileName = extractFileName(src.doc_path_name || "");
+
+                const nameSpan = document.createElement("span");
+                nameSpan.className = "source-name";
+                nameSpan.textContent = "📄 " + fileName;
+                nameSpan.title = fileName;  // 鼠标悬停显示完整文件名
+
+                // 相关度分数（如果有的话，来自 RRF 或 reranker）
+                const scoreSpan = document.createElement("span");
+                scoreSpan.className = "source-score";
+                if (src.score !== undefined) {
+                    // 分数可能是 0-1 的浮点数 或 整数排名
+                    const pct = typeof src.score === "number" && src.score <= 1
+                        ? Math.round(src.score * 100) + "%"
+                        : src.score;
+                    scoreSpan.textContent = pct;
+                }
+
+                item.appendChild(nameSpan);
+                item.appendChild(scoreSpan);
+                body.appendChild(item);
+            });
+
+            // ---- 组装 ----
+            card.appendChild(header);
+            card.appendChild(body);
+
+            // ---- 插入到指定元素之前 ----
+            // insertBeforeEl 是助手气泡的 wrapper，卡片插在它前面
+            messagesDiv.insertBefore(card, insertBeforeEl);
+
+            // 自动滚动让卡片可见
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            return card;
+        }
+
+        /**
+         * extractFileName(path) — 从 MinIO 路径中提取文件名
+         *
+         * "documents/2026/06/笔记.txt" → "笔记.txt"
+         * 如果解析失败，返回原始路径。
+         *
+         * @param {string} path — MinIO 对象路径
+         * @returns {string} 纯文件名
+         */
+        function extractFileName(path) {
+            if (!path) return "未知文档";
+            const parts = path.split("/");
+            return parts[parts.length - 1] || path;
+        }
+
+        /**
+         * formatFileSize(bytes) — 文件大小转可读格式
+         *
+         * 123 → "123 B"
+         * 12345 → "12.1 KB"
+         * 1234567 → "1.2 MB"
+         *
+         * @param {number} bytes — 字节数
+         * @returns {string} 格式化后的文件大小
+         */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + " B";
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
         }
 
         // ============================================================
         // 11. sendMessage() — 核心函数：发消息 → 调 API → 流式显示回复
         // ============================================================
         /**
-         * 执行流程（流式版）：
+         * 执行流程（支持 RAG 分流）：
          *   1. 读取输入框内容
          *   2. 如果还没有会话 → 自动创建一个
          *   3. 显示用户气泡
          *   4. 创建一个空的助手气泡（等待流式填充）
-         *   5. 调 POST /chat（带上 session_id, question, stream: true）
+         *   5. 调 POST /chat（带上 session_id, question, stream: true, use_rag）
          *   6. 用 ReadableStream 逐块读取 SSE 事件
-         *   7. 每收到一个 chunk 就追加到助手气泡的 textContent
-         *   8. 收到 finished: true 后更新时间戳、刷新侧边栏
-         *   9. 恢复按钮状态
+         *   7. 🆕 如果收到 type=sources → 在助手气泡前插入来源文档卡片
+         *   8. 每收到一个 chunk 就追加到助手气泡（普通聊天和 RAG 聊天格式略有不同）
+         *   9. 收到流结束信号后更新时间戳、刷新侧边栏
+         *   10. 恢复按钮状态
          */
         async function sendMessage() {
             // ---- 11.1 获取用户输入 ----
@@ -942,65 +1582,77 @@
             sendBtn.textContent = "思考中...";
 
             // ---- 11.5 创建一个空的助手气泡，拿到引用 ----
-            // createStreamingAssistantBubble() 返回 { bubble, timeDiv }
-            // 后续流式循环会不断更新 bubble.textContent
-            const { bubble, timeDiv } = createStreamingAssistantBubble();
+            // 🆕 解构时多了 wrapper，用于 RAG 模式下插入来源卡片
+            const { wrapper, bubble, timeDiv } = createStreamingAssistantBubble();
 
             try {
                 // ---- 11.6 调用后端 POST /chat（流式） ----
+                // 🆕 请求体增加 use_rag 字段，后端据此走 RAG 或普通聊天管线
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         session_id: currentSessionId,
                         question: question,
-                        stream: true,          // 告诉后端：我要流式输出
+                        stream: true,
+                        use_rag: useRag,       // 🆕 知识库开关
                     }),
                 });
 
                 // ---- 11.7 读取 SSE 流 ----
-                // response.body 是一个 ReadableStream 对象 — 代表"还没接收完的 HTTP 响应体"
-                // getReader() 返回一个 reader，可以逐块读取数据
-                // 类比 Python：打开文件后不是 read() 一次性读完，而是一行一行读
                 const reader = response.body.getReader();
-                // TextDecoder 把字节（Uint8Array）解码成字符串
-                // { stream: true } 让解码器知道"后面还有数据"，正确处理跨块的多字节字符
                 const decoder = new TextDecoder();
 
                 let buffer = "";        // 缓冲区：存放跨 chunk 的不完整行
                 let accumulated = "";   // 累积的完整回复文本（用于显示）
+                let sourcesShown = false;  // 🆕 标记来源卡片是否已显示（避免重复）
 
                 while (true) {
-                    // reader.read() 返回 { done: bool, value: Uint8Array }
-                    // done=true 表示流结束（服务端关闭了连接）
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    // 把新收到的字节追加到缓冲区
                     buffer += decoder.decode(value, { stream: true });
 
-                    // SSE 格式：每行以 "data: {json}\n\n" 结束
-                    // 按换行符切割，最后一段可能是不完整的行，留在 buffer 里下次处理
                     const lines = buffer.split("\n");
-                    buffer = lines.pop() || "";  // 最后一段（可能不完整），放回 buffer
+                    buffer = lines.pop() || "";
 
                     for (const line of lines) {
-                        // SSE 数据行都以 "data: " 开头
                         if (line.startsWith("data: ")) {
-                            const data = JSON.parse(line.slice(6));  // 去掉 "data: " 前缀后解析 JSON
+                            const data = JSON.parse(line.slice(6));
 
                             if (data.error) {
-                                // 后端返回的错误（如 DeepSeek API 调用失败）
                                 throw new Error(data.error);
                             }
 
-                            if (data.finished) {
-                                // 流结束：设置最终时间戳
+                            // ═══════════════════════════════════════════════
+                            // 🆕 根据是否有 type 字段区分 RAG 和普通格式
+                            // ═══════════════════════════════════════════════
+
+                            if (data.type === "sources") {
+                                // ── RAG 格式：来源文档事件 ──
+                                // 在助手气泡前插入来源卡片（只插一次）
+                                if (!sourcesShown && data.sources && data.sources.length > 0) {
+                                    showSourcesCard(data.sources, wrapper);
+                                    sourcesShown = true;
+                                }
+                            } else if (data.type === "delta") {
+                                // ── RAG 格式：LLM 逐 token 输出 ──
+                                accumulated += data.content;
+                                bubble.innerHTML = renderMarkdown(accumulated);
+                            } else if (data.type === "complete") {
+                                // ── RAG 格式：流结束 ──
                                 if (data.created_at) {
                                     timeDiv.textContent = formatTime(data.created_at);
                                 }
-                            } else {
-                                // 正常内容块：追加到累积文本，更新气泡显示
+                                // token_usage 和 latency_ms 目前不显示，保留在 data 中供调试
+                            } else if (data.finished && data.type === undefined) {
+                                // ── 普通格式：流结束事件 ──
+                                // 普通聊天的 SSE 没有 type 字段，靠 finished=true 判断
+                                if (data.created_at) {
+                                    timeDiv.textContent = formatTime(data.created_at);
+                                }
+                            } else if (data.content !== undefined && data.type === undefined) {
+                                // ── 普通格式：正常文本增量 ──
                                 accumulated += data.content;
                                 bubble.innerHTML = renderMarkdown(accumulated);
                             }
@@ -1018,7 +1670,6 @@
 
             } catch (error) {
                 // 网络挂了 / 服务器崩了 / 流中断：在气泡里显示错误信息
-                // 如果已经有一些内容了（accumulated 不为空），就保留内容并附加错误
                 if (accumulated) {
                     bubble.textContent = accumulated + "\n\n[流中断：" + error.message + "]";
                 } else {

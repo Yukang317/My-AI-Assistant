@@ -110,8 +110,6 @@ class RagService:
             base_url=Config.LLM_BASE_URL,
             timeout=60,
             max_retries=3,
-            retry_on_status_codes={500, 502, 503, 504},
-            retry_on_http_errors=True,
         )
         
         self.use_rerank = Config.USE_RERANK     # 默认关闭重排序
@@ -330,9 +328,9 @@ class RagService:
 
         # 3. 检索 + 重排
         # _retrieve() : BM25 + Vector → RRF 融合（top_k=10 个候选）
-        fused_docs = self._retrieve(question=question, top_k=top_k, filter_expr=filter_expr)
+        fused_docs = self._retrieve(query=question, top_k=top_k, filter_expr=filter_expr)
         # _rerank: 重排序（如果 USE_RERANK=True）或透传前 5 个
-        final_docs = self._rerank(question=question, documents=fused_docs, top_n=Config.RERANK_TOP_N)
+        final_docs = self._rerank(query=question, documents=fused_docs, top_n=Config.RERANK_TOP_N)
 
         # 4. 构建 Prompt
         # _build_context(): 文档列表 → 格式化的上下文字符串

@@ -84,6 +84,15 @@ class MilvusVectorStore:
         db_name = db_name or Config.MILVUS_DB_NAME
 
         try:
+            uri = f"http://{host}:{port}"
+
+            # 先用 default 库连接，检测目标数据库是否存在，不存在则创建
+            tmp_client = MilvusClient(uri=uri, db_name="default")
+            existing_dbs = tmp_client.list_databases()
+            if db_name not in existing_dbs:
+                tmp_client.create_database(db_name)
+                logger.info(f"Milvus 数据库 {db_name} 创建成功")
+
             # pymilvus 用 uri 参数，不是分开的 host/port
             self.client = MilvusClient(uri=f"http://{host}:{port}", db_name=db_name)
             self._init_collections()
@@ -161,6 +170,7 @@ class MilvusVectorStore:
         child_schema.add_field("id", DataType.INT64, is_primary=True)
         child_schema.add_field("doc_name", DataType.VARCHAR, max_length=self.MAX_DOC_NAME_LEN)
         child_schema.add_field("doc_path_name", DataType.VARCHAR, max_length=self.MAX_DOC_PATH_LEN)
+        child_schema.add_field("doc_md5", DataType.VARCHAR, max_length=32)
         child_schema.add_field("parent_id", DataType.VARCHAR, max_length=self.MAX_BUSINESS_ID_LEN)
         child_schema.add_field("child_id", DataType.VARCHAR, max_length=self.MAX_BUSINESS_ID_LEN)
         child_schema.add_field("doc_type", DataType.VARCHAR, max_length=self.MAX_DOC_TYPE_LEN)
@@ -215,7 +225,8 @@ class MilvusVectorStore:
         # 提示：如果已存在，直接 load 即可（可能已经 load 了，再 load 一次无害）
         if not self.client.has_collection(collection_name):
             self.client.create_collection(collection_name, schema=schema)
-            self._create_index_if_not_exists(collection_name)
+        # 无论新建还是已存在，确保索引已建好再 load
+        self._create_index_if_not_exists(collection_name)
         self.client.load_collection(collection_name)
 
 
@@ -240,12 +251,18 @@ class MilvusVectorStore:
         """
 
         # self.client.list_indexes(collection_name)
-        if not self.client.has_index(collection_name, "content_vector"):
-            self.client.create_index(
-                collection_name, field_name="content_vector",
+        indexes = self.client.list_indexes(collection_name)
+        if "content_vector" not in indexes:
+            index_params = self.client.prepare_index_params(
+                "content_vector",
                 index_type=Config.MILVUS_INDEX_TYPE,
                 metric_type=Config.MILVUS_METRIC_TYPE,
-                params={"nlist": Config.MILVUS_INDEX_NLIST}
+                index_name="content_vector_index",
+                params={"nlist": Config.MILVUS_INDEX_NLIST},
+            )
+            self.client.create_index(
+                collection_name=collection_name,
+                index_params=index_params,
             )
 
 
@@ -557,7 +574,8 @@ class MilvusVectorStore:
             ConnectionError: Milvus 不可达
         """
         # TODO(human): self.client.flush([Config.MILVUS_PARENT_COLLECTION, Config.MILVUS_CHILD_COLLECTION])
-        self.client.flush([Config.MILVUS_PARENT_COLLECTION, Config.MILVUS_CHILD_COLLECTION])
+        self.client.flush(Config.MILVUS_PARENT_COLLECTION)
+        self.client.flush(Config.MILVUS_CHILD_COLLECTION)
 
 
         

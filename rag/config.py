@@ -29,7 +29,9 @@ class Config:
 
     # ── 2. Embedding 配置 ────────────────────────────────────────
     # 模式: "local"（BGE 本地）/ "api"（调用远程 API）
-    EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "local")
+    # ⚠️ ECS 只有 3.5GB 内存，"local" 模式加载 BGE 模型(~1.3GB)会 OOM
+    # 默认用 API 模式（SiliconFlow 硅基流动，免费额度，OpenAI 兼容格式）
+    EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "api")
 
     # 本地模式 — BGE 模型
     # bge-large-zh-v1.5: 1024维, ~1.3GB, 中文召回率 81.5%
@@ -40,10 +42,11 @@ class Config:
     )
     EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1024"))
 
-    # API 模式（备选，暂不用）
+    # API 模式 — SiliconFlow（硅基流动）
+    # 免费额度，OpenAI 兼容格式，模型与本地 BGE 一致（1024 维，零迁移成本）
     EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")
-    EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", "")
-    EMBEDDING_API_MODEL = os.getenv("EMBEDDING_API_MODEL", "text-embedding-3-small")
+    EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", "https://api.siliconflow.cn/v1")
+    EMBEDDING_API_MODEL = os.getenv("EMBEDDING_API_MODEL", "BAAI/bge-large-zh-v1.5")
 
     # 当前生效的模型名（根据 mode 自动选，写入 Milvus 的 embedding_model 字段）
     @classmethod
@@ -76,10 +79,10 @@ class Config:
     # ── 4. PostgreSQL 配置 ───────────────────────────────────────
     # 复用 ECS 已有的 PostgreSQL 17（端口 15432）
     PG_HOST = os.getenv("PG_HOST", "127.0.0.1")
-    PG_PORT = os.getenv("PG_PORT", "15432")
+    PG_PORT = os.getenv("PG_PORT", "15433")
     PG_DATABASE = os.getenv("PG_DATABASE", "personal_assistant")
     PG_USER = os.getenv("PG_USER", "postgres")
-    PG_PASSWORD = os.getenv("PG_PASSWORD", "")
+    PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
 
     # ── 5. 文档分块配置 ──────────────────────────────────────────
     # 父子分块：父块保留完整上下文，子块做精准检索
