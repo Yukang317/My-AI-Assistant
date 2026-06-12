@@ -41,34 +41,35 @@ class StateField:
 # MainState — LangGraph 主状态 TypedDict
 ###############################################################################
 
-# 获取主状态的定义
-def get_main_state_reducer() -> dict:
-    """构建 MainState TypedDict 并返回，作为 StateGraph 的 State schema。
+class MainState(TypedDict):
+    """LangGraph 主图 State schema，定义所有节点共享的状态字段。
 
-    TypedDict 定义在函数内部（非模块顶层），确保 Annotated 中的 reducer LangGraph 延迟性的正确识别。
-    即，在真正需要构建 StateGraph时才进行解析，这时所有的 reducer 函数都已经就位了。
+    字段分五层：
+    - 用户输入: session_id, user_question
+    - 上下文: history_messages, memory_context (load_context 节点写入)
+    - 路由结果: intent, target_tool (intent_route 节点写入)
+    - 工具执行: tool_results (Annotated + add reducer，追加而非覆盖)
+    - 循环控制: turn_count, need_continue (阶段 6.2 启用)
+    - 最终输出: final_response (result_synthesis 节点写入)
     """
-    class MainState(TypedDict):
-        # ── 用户输入 ──
-        session_id: str              # 会话 ID，用作 thread_id 实现多会话隔离
-        user_question: str           # 用户当前提问原文
+    # ── 用户输入 ──
+    session_id: str              # 会话 ID，用作 thread_id 实现多会话隔离
+    user_question: str           # 用户当前提问原文
 
-        # ── 上下文 ──
-        history_messages: list       # 最近 20 条历史消息（load_context 节点写入）
-        memory_context: str          # MEMORY.md 文件内容，用户画像与偏好
+    # ── 上下文 ──
+    history_messages: list       # 最近 20 条历史消息（load_context 节点写入）
+    memory_context: str          # MEMORY.md 文件内容，用户画像与偏好
 
-        # ── 路由结果 ──
-        intent: str                  # LLM 判断的用户意图（general_chat / use_tool / unclear）
-        target_tool: str | None      # 目标工具名，对应 TOOLS 注册表的 key，无工具时为 None
+    # ── 路由结果 ──
+    intent: str                  # LLM 判断的用户意图（general_chat / use_tool / unclear）
+    target_tool: str | None      # 目标工具名，对应 TOOLS 注册表的 key，无工具时为 None
 
-        # ── 工具执行 ──
-        tool_results: Annotated[list, add]  # 工具调用结果列表，add reducer 追加而非覆盖
+    # ── 工具执行 ──
+    tool_results: Annotated[list, add]  # 工具调用结果列表，add reducer 追加而非覆盖
 
-        # ── 循环控制 ──
-        turn_count: int              # 当前 while-true 循环次数（阶段 6.1 用不上，6.2 启用）
-        need_continue: bool          # 是否需要继续循环调用工具
+    # ── 循环控制 ──
+    turn_count: int              # 当前 while-true 循环次数（阶段 6.1 用不上，6.2 启用）
+    need_continue: bool          # 是否需要继续循环调用工具
 
-        # ── 最终输出 ──
-        final_response: str          # result_synthesis 生成的最终回复文本
-
-    return MainState
+    # ── 最终输出 ──
+    final_response: str          # result_synthesis 生成的最终回复文本

@@ -8,7 +8,7 @@
 from typing import Callable, Optional
 from agent.tools.base import ToolContext, ToolResult
 
-from agent.tolls.rag_search import rag_search
+from agent.tools.rag_search import rag_search
 
 # 工具函数类型：接收 ToolContext + 输入字符串，返回 ToolResult
 ToolFunc = Callable[[ToolContext, str], ToolResult]
@@ -61,14 +61,14 @@ def register_tool(name: str, func: ToolFunc, description: str, bound: str, skill
     }
 
 
-def get_tool(name: str) -> dict:
-    """根据名称获取工具信息。
+def get_tool(name: str) -> ToolFunc:
+    """根据名称获取工具函数。
 
     Args:
         name: 工具名称
-    
+
     Returns:
-        包含 func/description/bound/skill_md 的字典
+        可调用的工具函数 (ToolContext, str) -> ToolResult
 
     Raises:
         KeyError: 工具不存在时，附带所有可用工具名列表
@@ -76,16 +76,11 @@ def get_tool(name: str) -> dict:
     if name not in TOOLS:
         available = list(TOOLS.keys())
         raise KeyError(f"工具 '{name}' 不存在。可用工具：{available}")
-    return TOOLS[name]
+    return TOOLS[name]["func"]
 
 
 
 
-# TODO(human): 实现 list_tools() 函数
-# 说明：
-#   1. 返回 TOOLS 中所有 func 不为 None 的工具列表
-#   2. 每条包含 name 和 description
-#   3. 用于拼接 LLM 的 System Prompt，让 LLM 知道有哪些工具可用
 def list_tools() -> list[dict]:
     """列出所有已实现的工具。
 
