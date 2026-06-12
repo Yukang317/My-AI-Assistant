@@ -138,6 +138,23 @@ def build_graph() -> CompiledStateGraph:
 
 # ── 运行入口（调试用）─────────────────────────────────────────
 
+def run_graph_debug(session_id: str, question: str) -> dict:
+  """调试入口：返回完整 State，方便查看意图、路由、工具结果等中间态。
+
+  与 run_graph() 的区别：返回整个 final_state dict 而不是只提取 final_response。
+  测试脚本用这个来打印各阶段详情。
+  """
+  graph = build_graph()
+  initial_state: MainState = {
+    StateField.SESSION_ID: session_id,
+    StateField.USER_QUESTION: question,
+  }
+  return graph.invoke(
+    initial_state,
+    config={"configurable": {"thread_id": session_id}},
+  )
+
+
 def run_graph(session_id: str, question: str) -> str:
   """构建图 + 执行一次对话，返回 AI 回复。
 
