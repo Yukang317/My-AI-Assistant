@@ -89,9 +89,16 @@ def tool_execute(state: MainState) -> dict:
 
 def build_graph() -> CompiledStateGraph:
   """构建并编译 Agent 主图。
-    
+
   节点注册 → 边连接 → 条件路由 → 编译。
   返回编译后的图，可直接 invoke() 执行。
+
+  当前图结构：
+    START → load_context → intent_route（条件分支）
+      ├─ general_chat → result_synthesis → END
+      ├─ use_tool → tool_execute → result_synthesis → END
+      └─ inspire → tool_execute → result_synthesis → END
+        （P1: inspire 临时走单工具调用；P2/P3 升级为 Phase 1 发散+Phase 2 收敛管线）
   """
   # 1. 创建图
   graph = StateGraph(MainState)
@@ -121,12 +128,19 @@ def build_graph() -> CompiledStateGraph:
   # 4. 连接边
   graph.add_edge(START, "load_context")             # 固定边：起点→加载上下文
   graph.add_edge("load_context", "intent_route")    # 固定边：上下文→路由
-  graph.add_conditional_edges(                      # 条件边：路由->工具 或 直接回复
+
+  # 条件边：根据 intent 路由到不同分支
+  # get_route_key 现在同时检查 intent 和 target_tool
+  graph.add_conditional_edges(
     "intent_route",
-    lambda state: get_route_key(state.get(StateField.TARGET_TOOL)),
+    lambda state: get_route_key(
+      intent=state.get(StateField.INTENT, "general_chat"),
+      target_tool=state.get(StateField.TARGET_TOOL),
+    ),
     {
-      "use_tool": "tool_execute",               # 需要工具 → 执行工具
-      "general_chat": "result_synthesis",        # 无需工具 → 直接合成回复                  # 
+      "use_tool": "tool_execute",         # 事实查询：单工具调用 → 基于结果回答
+      "inspire": "tool_execute",          # 灵感发散：P1 暂走工具调用（P2 升级为发散-收敛管线）
+      "general_chat": "result_synthesis", # 普通闲聊：直接 LLM 回复
     },
   )
   graph.add_edge("tool_execute", "result_synthesis") # 固定边：工具→合成

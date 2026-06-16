@@ -9,6 +9,7 @@ from typing import Callable, Optional
 from agent.tools.base import ToolContext, ToolResult
 
 from agent.tools.rag_search import rag_search
+from agent.tools.web_search import exa_search, tavily_search
 
 # 工具函数类型：接收 ToolContext + 输入字符串，返回 ToolResult
 ToolFunc = Callable[[ToolContext, str], ToolResult]
@@ -23,9 +24,21 @@ TOOLS: dict[str, dict] = {
         "bound": "READ_ONLY",       # 要和  agent/bound.py 里的分类一致
         "skill_md": None,
     },
-    "web_search": {
-        "func": None,  
-        "description": "网页搜索，查询互联网上的实时信息（阶段 6.2 实现）",
+    "exa_search": {
+        "func": exa_search,
+        "description": (
+            "Exa 神经语义搜索：用 Embedding 做语义匹配，擅长找到「概念相关但用词不同」的内容。"
+            "适合跨领域类比、学术检索、发散思考。需要 EXA_API_KEY"
+        ),
+        "bound": "READ_ONLY",
+        "skill_md": None,
+    },
+    "tavily_search": {
+        "func": tavily_search,
+        "description": (
+            "Tavily AI 搜索：专为 AI Agent 设计的实时搜索，返回结构化结果（含相关性评分）。"
+            "适合获取最新事实、新闻、实时数据、事实核查。需要 TAVILY_API_KEY"
+        ),
         "bound": "READ_ONLY",
         "skill_md": None,
     },
