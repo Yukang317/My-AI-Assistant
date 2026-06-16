@@ -109,7 +109,16 @@ class Config:
     # 允许上传的文件类型
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".md", ".txt"}
 
-    # ── 8. RAG Prompt 模板 ───────────────────────────────────────
+    # ── 8. 网页搜索 API 配置 ─────────────────────────────────────
+    # Exa: 神经语义搜索引擎，擅长跨领域概念关联
+    # 注册地址: https://exa.ai
+    EXA_API_KEY = os.getenv("EXA_API_KEY", "")
+
+    # Tavily: 专为 AI Agent 设计的实时搜索 API
+    # 注册地址: https://tavily.com
+    TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+
+    # ── 9. RAG Prompt 模板 ───────────────────────────────────────
     RAG_PROMPT_TEMPLATE = """你是一个个人 AI 助理。请根据用户的知识库内容回答问题。
 
 知识库内容:
