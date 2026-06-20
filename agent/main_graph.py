@@ -3,8 +3,8 @@
 
 架构：
   START → load_context → intent_route（条件分支）
-    ├─ general_chat → result_synthesis → END
-    └─ use_tool → tool_execute ─────────────────┘
+    ├─ general_chat → result_synthesis → memory_update → END
+    └─ use_tool → tool_execute → result_synthesis → memory_update → END
 
 阶段 6.2 将把 tool_execute 升级为 while-true 循环（多轮工具调用）。
 阶段 6.1 先跑通最简单的：单工具调用 → 合成回复。
@@ -21,6 +21,7 @@ from rag.config import Config
 
 from agent.state import MainState, StateField
 from agent.nodes import load_context, result_synthesis
+from agent.nodes.memory_update import memory_update
 from agent.router import route_intent, get_route_key, RouteResult
 from agent.tools.registry import get_tool, list_tools
 from agent.tools.base import ToolContext, ToolResult
@@ -29,6 +30,7 @@ from agent.tools.base import ToolContext, ToolResult
 
 _llm = None   # 模块级缓存
 
+# get_llm() 在 main_graph.py 里是单例——整个 Graph 共用同一个 LLM 实例，配置来自 .env（DeepSeek API Key 等）。
 def get_llm() -> BaseChatModel:
   """懒加载 LLM 单例，和 sagt_agent 的 llm_setting.py 同模式。
     
@@ -119,11 +121,22 @@ def build_graph() -> CompiledStateGraph:
     """适配层：给 result_synthesis 注入 model（依赖注入 → LangGraph 节点）。"""
     return result_synthesis(state, get_llm())
 
+  def memory_update_node(state: MainState) -> dict:
+    """适配层：把 LangGraph 节点签名转成 memory_update 的调用格式。"""
+    return memory_update(state, get_llm())
+
+  '''
+  LangGraph 注册节点时，只认这种函数：
+  def 某个节点(state: MainState) -> dict:
+      ...
+  '''
+
   # 3. 注册节点
   graph.add_node("load_context", load_context)
   graph.add_node("intent_route", intent_node)
   graph.add_node("tool_execute", tool_execute)
   graph.add_node("result_synthesis", result_synthesis_node)
+  graph.add_node("memory_update", memory_update_node)
 
   # 4. 连接边
   graph.add_edge(START, "load_context")             # 固定边：起点→加载上下文
@@ -144,7 +157,8 @@ def build_graph() -> CompiledStateGraph:
     },
   )
   graph.add_edge("tool_execute", "result_synthesis") # 固定边：工具→合成
-  graph.add_edge("result_synthesis", END)            # 固定边：合成→终点
+  graph.add_edge("result_synthesis", "memory_update") # 固定边：合成→记忆更新
+  graph.add_edge("memory_update", END) # 固定边：记忆更新→终点
 
   # 5. 编译（带内存检查点）-有了 checkpointer 后：每次执行完一个节点，LangGraph 自动把当前 State "拍照存档"。下次用同一个 thread_id（也就是 session_id）调用时，它从存档点继续，而不是从零开始。
   return graph.compile(checkpointer=MemorySaver())
