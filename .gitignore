@@ -13,6 +13,9 @@ chat.db
 # Docker 数据目录
 data/
 
+# IDE 配置
+.cursor/
+
 # 临时文件 & 备份
 临时终端输出记录.txt
 备份/
