@@ -156,7 +156,7 @@
 
 ## 四、项目状态文件更新规则
 
-日志写完后，**只更新 `personal_assistant/上次会话成果.md`**。CLAUDE.md、准备工作总结.md、项目需求文档.md 已改为只读，不再由本技能更新。
+日志写完后，**只更新 `personal_assistant/上次会话成果.md`**。CLAUDE.md、README.md 已改为只读，不再由本技能更新。
 
 ### `personal_assistant/上次会话成果.md` — 每次必更新
 

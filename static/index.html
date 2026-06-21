@@ -716,6 +716,13 @@
             <!-- 聊天区顶部：标题 + RAG 知识库开关 -->
             <div class="chat-header">
                 <span id="chatHeaderTitle">个人 AI 助理</span>
+
+                <label class="rag-toggle" title="开启后走 Agent 编排（意图路由+工具+记忆）">
+                    <span> 🧠 智能</span>
+                    <!-- checked 表示默认开启智能模式（走 /chat/graph） -->
+                    <input type="checkbox" id="agentToggle" checked onchange="toggleAgent()">
+                    <span class="rag-toggle-slider"></span>
+                </label>
                 <!-- RAG 知识库 toggle 开关 -->
                 <label class="rag-toggle" title="开启后，AI 会检索知识库中的文档来回答问题">
                     <span>📚 知识库</span>
@@ -774,6 +781,9 @@
 
         // 🆕 RAG 知识库开关：false=普通聊天，true=检索增强生成
         let useRag = false;
+
+        // 🆕 Agent 智能模式：true=走 /chat/graph，false=走旧 /chat 直调 LLM
+        let useAgent = true;
 
         // ============================================================
         // 2. 获取页面元素引用 — document.getElementById()
@@ -1257,6 +1267,16 @@
         }
 
         /**
+         * toggleAgent() — 切换 Agent 智能模式开关
+         *
+         * 只改全局状态 + 更新 UI 提示，不影响正在进行的流式请求
+         * （useAgent 的值在 sendMessage 调用时被捕获到请求体里）。
+         */
+        function toggleAgent() {
+            useAgent = agentToggle.checked;
+        }
+
+        /**
          * triggerUpload() — 触发隐藏的文件选择器
          *
          * 点击知识库区域的 + 按钮时调用，弹出系统文件选择对话框。
@@ -1588,14 +1608,20 @@
             try {
                 // ---- 11.6 调用后端 POST /chat（流式） ----
                 // 🆕 请求体增加 use_rag 字段，后端据此走 RAG 或普通聊天管线
-                const response = await fetch("/chat", {
+                
+                // 路由策略:
+                //   useRag=true  → /chat（直调 RagService，和之前一样）
+                //   useRag=false + useAgent=true → /chat/graph（Agent+记忆）
+                //   useRag=false + useAgent=false → /chat（旧直调 LLM，无记忆）
+                const endpoint = (useRag || !useAgent) ? "/chat" : "/chat/graph";
+                const response = await fetch(endpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         session_id: currentSessionId,
                         question: question,
                         stream: true,
-                        use_rag: useRag,       // 🆕 知识库开关
+                        use_rag: useRag,       // 只有 /chat 端点读这个字段
                     }),
                 });
 
