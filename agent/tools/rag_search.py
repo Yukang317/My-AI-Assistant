@@ -6,7 +6,6 @@ RAG 搜索工具 — 把现有 RAG 检索能力封装为标准工具
 """
 import logging
 from agent.tools.base import ToolContext, ToolResult
-from step23_rag import get_rag_service
 
 # ── 工具函数 ──────────────────────────────────────────────────
 
@@ -17,7 +16,7 @@ def rag_search(ctx: ToolContext, query: str) -> ToolResult:
     """基于 RAG 知识库搜索文档内容，返回 LLM 生成的回答和引用来源。
     
     这是 Agent 工具层对现有 RAG 检索能力的薄封装：
-    step23_rag.get_rag_service() → RagService.query() → ToolResult
+    app.get_rag_service() → RagService.query() → ToolResult
     
     Args:
         ctx: 工具调用上下文（含 session_id, user_id）
@@ -27,7 +26,8 @@ def rag_search(ctx: ToolContext, query: str) -> ToolResult:
         ToolResult: 成功时 data=LLM回答, artifacts={"sources": [...]}
     """
     try:
-        # 获取 RAG 服务单例（已在 step23_rag 启动时初始化）
+        # 惰性导入：避免 app ↔ agent.tools 循环导入
+        from app import get_rag_service
         service = get_rag_service()          # RagService 实例，内部持有 BM25 + 向量 + RRF + 重排
         result = service.query(              # 调用检索+生成管线
             question=query,                  # 注意参数名是 question 不是 query

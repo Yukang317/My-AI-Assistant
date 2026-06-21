@@ -40,6 +40,7 @@ class Config:
         "EMBEDDING_LOCAL_MODEL",
         "BAAI/bge-large-zh-v1.5"
     )
+    
     EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1024"))
 
     # API 模式 — SiliconFlow（硅基流动）

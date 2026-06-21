@@ -4,6 +4,8 @@
 
 一个运行在阿里云 ECS 上的个人 AI 助理系统，具备 RAG 知识库检索、Agent 智能编排、流式聊天对话等能力。技术栈覆盖大模型应用开发全链路，既是生产力工具，也是教学练手项目。
 
+**核心能力路径**：Web 聊天 → 持久记忆 → RAG 知识库 → Agent 编排 → 工具生态 → 多平台接入 → 长期记忆
+
 ---
 
 ## 功能概览
@@ -88,13 +90,19 @@
 | 包管理 | uv + Python 3.12 | Aliyun pip 镜像 |
 | 容器化 | Docker Compose | 4 容器，healthcheck 启动编排 |
 
+**刻意不用的**：Redis（阶段 6 后期引入）、GraphRAG（个人文档量小）。
+
 ---
 
 ## 项目结构
 
 ```
 personal_assistant/
-├── step23_rag.py               # 主服务入口（14 API 端点，~600 行）
+├── app.py                      # 主服务入口（FastAPI，15 API 端点）
+├── backups/                    # app.py 集成快照（见下方「集成快照」）
+│   ├── snapshots/              #   各里程碑的 app.py 副本
+│   └── manifest.json           #   快照索引
+├── scripts/snapshot.py         # 快照创建脚本（只备份 app.py）
 ├── db.py                       # PostgreSQL 数据库抽象层（12 函数）
 ├── migrate_sqlite_to_pg.py     # SQLite → PG 一次性迁移脚本
 ├── docker-compose.yml          # Docker 基础设施（4 容器）
@@ -145,18 +153,36 @@ personal_assistant/
 ├── learn_basis/                # 学习示例
 │   └── step01_single_tool_agent.py  # 单工具 Agent 教学示例
 │
+├── docs/                       # 项目文档
+│   ├── 上次会话成果.md           # ★ 最新进度与代码状态（每次会话后更新）
+│   ├── 阶段5技术方案.md          # RAG 完整架构方案（按需）
+│   └── 阶段6技术方案.md          # Agent 编排架构方案（按需）
+│
 ├── dev_log/                    # 开发日志（按日期归档）
-├── 备份/                       # 旧版本代码备份
-├── 准备工作总结.md              # 项目常量参考（只读）
-├── 上次会话成果.md              # 最新进度与代码状态
-├── docs/                        # 技术方案文档
-│   ├── 阶段5技术方案.md           # RAG 完整架构方案
-│   └── 阶段6技术方案.md           # Agent 编排架构方案
+└── 备份/                       # 旧版本代码备份
 ```
 
 ---
 
+## 三存储系统协作
+
+项目使用三个存储系统各司其职，通过 `doc_id` 关联：
+
+| 存储 | 类比 | 存什么 | 特点 |
+|------|------|--------|------|
+| **MinIO** | 文件柜 | 原始文档（PDF/Word/MD/TXT） | 不可变，一次上传永久保存 |
+| **Milvus** | 搜索引擎 | 向量嵌入 + chunk 文本 | 语义相似度搜索，父子双集合 |
+| **PostgreSQL** | 档案卡片柜 | 元数据 + 聊天记录 + 父子映射 | 结构化查询，ACID 事务 |
+
+删除时按顺序清理：BM25 内存先删 → MinIO+Milvus 持久层 → PG 元数据最后。
+
+---
+
 ## 快速开始
+
+### 运行环境
+
+项目部署在阿里云 ECS（Alibaba Cloud Linux 3，3.5GB RAM，80GB 磁盘），Python 3.12.12（uv 管理），pip 使用 Aliyun 镜像。
 
 ### 1. 准备 Python 环境
 
@@ -192,7 +218,7 @@ EMBEDDING_API_KEY=your_siliconflow_api_key    # SiliconFlow 提供免费额度
 ### 4. 启动服务
 
 ```bash
-uv run step23_rag.py
+uv run app.py
 ```
 
 服务启动后：
@@ -266,20 +292,6 @@ START
 
 ---
 
-## 三存储系统协作
-
-项目使用三个存储系统各司其职：
-
-| 存储 | 类比 | 存什么 | 特点 |
-|------|------|--------|------|
-| **MinIO** | 文件柜 | 原始文档（PDF/Word/MD/TXT） | 不可变，一次上传永久保存 |
-| **Milvus** | 搜索引擎 | 向量嵌入 + chunk 文本 | 语义相似度搜索，父子双集合 |
-| **PostgreSQL** | 档案卡片柜 | 元数据 + 聊天记录 + 父子映射 | 结构化查询，ACID 事务 |
-
-三者通过 `doc_id` 关联，删除时按顺序清理（BM25 内存先删 → MinIO+Milvus 持久层 → PG 元数据最后）。
-
----
-
 ## 开发路线图
 
 ```
@@ -300,13 +312,97 @@ START
 
 ## 开发指南
 
-本项目采用 **Mode E（骨架式教学开发）** 协作模式——Claude 生成带完整类型标注的代码骨架，逐函数讲解知识点，用户自己动手实现。详见根目录 `CLAUDE.md` 中的完整说明。
+### 启动前必读（按顺序）
 
-**开发前必读（按顺序）**：
-1. `准备工作总结.md` — 用户档案、技术决策、服务器环境、参考索引
-2. `上次会话成果.md` — 最新进度、代码状态、下一步任务
-3. `docs/阶段5技术方案.md` — RAG 完整架构（按需）
-4. `docs/阶段6技术方案.md` — Agent 编排架构（按需）
+1. **`docs/上次会话成果.md`** — 最新进度、代码状态、下一步任务（唯一每次更新的文件）
+2. **`docs/阶段5技术方案.md`** — RAG 完整架构（按需）
+3. **`docs/阶段6技术方案.md`** — Agent 编排架构（按需）
+
+### 协作模式：Mode E（骨架式教学开发）
+
+本项目采用 5 模式渐进式协作（A-B-C-D-E），默认使用 **Mode E**：
+
+| 模式 | 适用场景 | 谁写代码 |
+|------|---------|---------|
+| **E（默认）** | 新模块/新文件开发 | Claude 生成骨架 → 逐函数教学 → 用户实现 |
+| A | 用户明确要求 / 全新语言领域 | Claude 写完整代码 |
+| C | Bug 修复 | Claude 提议修改，用户实现 |
+| D | 参考已有代码的新功能 | Claude 提议，用户实现 |
+
+**Mode E 四步流程**：骨架生成 → 逐函数教学（知识点+示例+任务） → 互动问答 → 收尾记录。
+
+Python 后端用户自己写，JS 前端 Claude 写。详见根目录 `CLAUDE.md` 中的完整说明。
+
+### 集成快照（app.py 里程碑备份）
+
+每次在 `app.py` 上完成一个功能集成、验证通过后，把当时的入口文件存一份快照。项目根目录始终保留**最新可运行版**，历史版本在 `backups/snapshots/` 里按里程碑归档。
+
+**只备份 `app.py`**，不备份 agent/、前端、RAG 等（那些用 Git 管理，避免占磁盘）。
+
+**工作流**：
+
+```
+改 app.py → 本地验证（uv run app.py）→ 集成完成 → 创建快照 → 继续下一功能
+```
+
+**创建快照**：
+
+```bash
+cd personal_assistant
+uv run python scripts/snapshot.py <阶段标签> "<本次集成说明>"
+```
+
+示例：
+
+```bash
+uv run python scripts/snapshot.py stage62_web_search "P2 web_search 接入"
+# → backups/snapshots/20260621_stage62_web_search/app.py
+```
+
+| 参数 | 说明 |
+|------|------|
+| `阶段标签` | 英文+下划线，如 `stage62_web_search`（脚本自动加日期前缀） |
+| `"说明"` | 可选，一句话描述本次集成了什么 |
+
+**查看已有快照**：
+
+```bash
+cat backups/manifest.json
+ls backups/snapshots/
+```
+
+**恢复某个版本**：
+
+```bash
+cp backups/snapshots/20260621_stage62_agent_graph/app.py app.py
+uv run app.py   # 恢复后重启服务
+```
+
+**建议习惯**：重要集成 = 先 snapshot，再 git commit（快照记里程碑，Git 记日常 diff）。
+
+更多细节见 [`backups/README.md`](backups/README.md)。
+
+---
+
+## 用户档案
+
+- **GitHub**：[Yukang317](https://github.com/Yukang317)
+- **技术方向**：Python 后端 / LLM 应用开发
+- **已掌握**：Prompt 工程、FastAPI、LangGraph、MCP、RAG（混合检索+重排+评估）、PEFT/LoRA
+- **做过的主要项目**：SAGT 销冠智能体、LlamaIndex RAG（混合检索+语义分块）、MCP 多智能体系统
+- **学习风格**：逐行拆解、追根究底、笔记详细、擅长阅读和理解代码
+
+### 已学项目参考索引
+
+需要参考某个能力的实现时，去看对应的学习项目：
+
+| 需要的能力 | 参考项目位置 |
+|-----------|-------------|
+| FastAPI + JWT + SSE | `学习过程与学习过程中的项目/AITest1_copy/大模型基础/案例/` |
+| 混合检索+语义分块+重排+评估 | `学习过程与学习过程中的项目/AITest1_copy/Agent智能体开发/7-llamaindex项目/` |
+| LangGraph 多智能体 + MCP | `学习过程与学习过程中的项目/AITest1_copy/Agent智能体开发/mcp-project/` |
+| Milvus + MinIO + 父子块 | `学习过程与学习过程中的项目/AITest1_copy/私有化微调/企业知识库项目/` |
+| 文档解析器策略模式 | `学习过程与学习过程中的项目/mildoc/mildoc_index/parser/` |
 
 ---
 
@@ -322,4 +418,4 @@ START
 ---
 
 **作者**：[Yukang317](https://github.com/Yukang317)
-**最后更新**：2026-06-16
+**最后更新**：2026-06-21
