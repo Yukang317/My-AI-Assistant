@@ -23,7 +23,9 @@ from agent.state import MainState, StateField
 from agent.nodes import load_context, result_synthesis
 from agent.nodes.memory_update import memory_update
 from agent.router import route_intent, get_route_key, RouteResult
-from agent.tools.registry import get_tool, list_tools
+# ★ H1 新增 import：BOUND 检查 + 查工具安全分类
+from agent.bound import check_bound
+from agent.tools.registry import get_tool, get_tool_bound, list_tools
 from agent.tools.base import ToolContext, ToolResult
 
 # ── LLM 实例（模块级单例）─────────────────────────────────────
@@ -52,6 +54,13 @@ def get_llm() -> BaseChatModel:
   return _llm
 
 
+# ── Harness H1：BOUND 分类 → check_bound 用的动作描述 ──────────
+# NEVER_DO 黑名单里有「发送HTTP请求」，NETWORK 工具必须用「网络搜索」绕过
+BOUND_ACTION_MAP: dict[str, str] = {
+    "READ_ONLY": "读取数据",
+    "NETWORK": "网络搜索",
+    "WRITE": "写入数据",
+}
 
 
 
@@ -61,7 +70,7 @@ def tool_execute(state: MainState) -> dict:
     """执行路由选中的工具，返回 ToolResult 列表。
 
     intent_route 已经确定了 target_tool 并写入 State，
-    本节点只负责取工具 → 构造 ToolContext → 调用 → 包装返回值。
+    阶段 6.3 H1：先过 BOUND 确定性检查，再真正调用工具。
     
     Args:
         state: 当前 MainState，读取 target_tool + user_question + session_id
@@ -73,18 +82,42 @@ def tool_execute(state: MainState) -> dict:
     question = state.get(StateField.USER_QUESTION, "")
     session_id = state.get(StateField.SESSION_ID, "")
 
+    # ── 第 1 步：Harness 安检（确定性代码，不信任 LLM）──
     try:
+      # 从注册表查这个工具的安全分类（READ_ONLY / NETWORK / WRITE）
+      bound_category = get_tool_bound(target_tool)
+      # 把分类映射成 action 描述；NETWORK →「网络搜索」，不会命中 NEVER_DO
+      action_desc = BOUND_ACTION_MAP.get(bound_category, "未知操作")
+      action = f"调用工具:{target_tool} {action_desc}"
+      # target 用用户问题；若问题里含 .env 等危险路径模式会被 DANGER_ZONES 拦截
+      allowed, reason = check_bound(action, question)
+      if not allowed:
+        # 安检失败：直接返回错误 ToolResult，Graph 不崩、不调外网
+        return {
+          StateField.TOOL_RESULTS: [ToolResult(success=False, data="", error=reason)],
+          StateField.NEED_CONTINUE: False,
+        }
+    except Exception as e:
+      # 工具名不存在等异常，和原来一样兜底
+      return {
+        StateField.TOOL_RESULTS: [ToolResult(success=False, data="", error=str(e))],
+        StateField.NEED_CONTINUE: False,
+      }
+
+    # ── 第 2 步：安检通过，真正执行工具（和原来一样）──
+    try:
+      # 返回值是一个**从字典里取出来的**函数，接收 ToolContext + 输入字符串，返回 ToolResult
       tool_func = get_tool(target_tool)           # 从注册表拿函数
       ctx = ToolContext(session_id=session_id)    # 构造调用上下文
+      # 执行**取出来的那个函数**
       result = tool_func(ctx, question)           # 执行！result 是 ToolResult
     except Exception as e:
-      result = ToolResult(success=False, error=str(e))  # 兜底，Graph不崩
-    
-    return {
-      StateField.TOOL_RESULTS: [result],                        # 列表包装，result_synthesis 会遍历
-      StateField.NEED_CONTINUE: False,                          # 阶段 6.1 固定 False，6.2 改循环判断
-    }
+      result = ToolResult(success=False, data="", error=str(e))
 
+    return {
+      StateField.TOOL_RESULTS: [result],
+      StateField.NEED_CONTINUE: False,
+    }
 
 
 # ── 图构建 ────────────────────────────────────────────────────
