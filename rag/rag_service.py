@@ -58,6 +58,10 @@ from rag.retrieval.rrf_fusion import RRFFusion
 
 logger = logging.getLogger(__name__)
 
+# 检索为空时的诚实回复：宁可明说"没有"，也不让 LLM 拿空上下文编造。
+# query() / query_stream() 在 final_docs 为空时直接返回它，跳过 LLM 调用。
+NO_RESULT_ANSWER: str = "知识库中没有检索到与该问题相关的内容，无法据此回答。建议先上传相关文档，或换个问法。"
+
 
 class RagService:
     """RAG 服务编排层 — 串联检索管线与 LLM 生成。
@@ -332,6 +336,20 @@ class RagService:
         # _rerank: 重排序（如果 USE_RERANK=True）或透传前 5 个
         final_docs = self._rerank(query=question, documents=fused_docs, top_n=Config.RERANK_TOP_N)
 
+        # 3.5 空结果降级：检索不到任何文档时直接诚实返回，不调用 LLM。
+        # 否则 _build_context 只会给出占位提示，LLM 仍可能基于自身知识编造，
+        # 而且 rag_search 工具的 `if answer:` 永远为真，无法识别"其实没查到"。
+        if not final_docs:
+            logger.info("RAG 检索为空，跳过 LLM，返回诚实降级回复：%s", question)
+            return {
+                "answer": NO_RESULT_ANSWER,
+                "sources": [],
+                "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "latency_ms": int((time.time() - start_time) * 1000),
+                "question": question,
+                "no_result": True,
+            }
+
         # 4. 构建 Prompt
         # _build_context(): 文档列表 → 格式化的上下文字符串
         context = self._build_context(final_docs)
@@ -407,6 +425,14 @@ class RagService:
             # 步骤 3：检索 + 重排（和 query() 完全一样）
             fused_docs = self._retrieve(query=question, top_k=top_k, filter_expr=filter_expr)
             final_docs = self._rerank(query=question, documents=fused_docs, top_n=Config.RERANK_TOP_N)
+
+            # 步骤 3.5：空结果降级——检索为空时推一条诚实回复后结束，不调用 LLM
+            if not final_docs:
+                logger.info("RAG 流式检索为空，返回诚实降级回复：%s", question)
+                yield {"type": "sources", "documents": []}
+                yield {"type": "delta", "content": NO_RESULT_ANSWER}
+                yield {"type": "complete", "token_usage": {}, "no_result": True}
+                return
 
             # 步骤 4：构建 Prompt
             context = self._build_context(final_docs)

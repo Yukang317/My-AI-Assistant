@@ -48,7 +48,8 @@ class EmbeddingService:
         elif self.mode == "api":
             response = self.client.embeddings.create(
                 model=Config.EMBEDDING_API_MODEL,
-                input=texts
+                input=texts,
+                encoding_format="float",  # 必须显式指定 float，openai SDK 2.38 默认 base64，SiliconFlow 不支持
             )
             return [data.embedding for data in response.data]
         else:
