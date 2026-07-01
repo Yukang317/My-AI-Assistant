@@ -6,10 +6,12 @@
     ├─ general_chat → result_synthesis → memory_update → END
     └─ use_tool → tool_execute → result_synthesis → memory_update → END
 
+阶段 6.3 H2：在 H1 基础上接入 agent/trace.py 双层追踪。
 阶段 6.2 将把 tool_execute 升级为 while-true 循环（多轮工具调用）。
 阶段 6.1 先跑通最简单的：单工具调用 → 合成回复。
 """
 
+import time
 from typing import Optional
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
@@ -27,6 +29,28 @@ from agent.router import route_intent, get_route_key, RouteResult
 from agent.bound import check_bound
 from agent.tools.registry import get_tool, get_tool_bound, list_tools
 from agent.tools.base import ToolContext, ToolResult
+
+# ★ H2 新增：结构化追踪（本地 JSONL + LangSmith tracing_context）
+from agent.trace import (
+    agent_trace_context,        # 自定义的trace追踪
+    trace_bound_check,          # 安检
+    trace_route_decision,       # 路由
+    trace_run_end,              # 运行结束
+    trace_tool_execute,         # 工具执行
+)
+
+# ★ H3 新增：灵感引擎扩展（发散-收敛管线）
+from agent.inspire_diverge import inspire_diverge
+from agent.inspire_converge import inspire_converge
+
+
+# ── 循环预算默认值 ────────────────────────────────────────────
+
+DEFAULT_MAX_TURNS = 3           # 最大循环次数
+DEFAULT_TIME_BUDGET_MS = 30_000 # 总超时预算30秒
+# 软 token 预算：每轮估算 len(question)+len(data)，累加超阈值则停
+DEFAULT_TOKEN_BUDGET_ESTIMATE = 8_000 # 软 token 预算8000
+
 
 # ── LLM 实例（模块级单例）─────────────────────────────────────
 
@@ -52,6 +76,71 @@ def get_llm() -> BaseChatModel:
   )
 
   return _llm
+
+
+# 内部判断函数，基于工具结果决定是否继续调用
+def _should_continue_by_observation(
+  question: str,
+  latest_tool_result: ToolResult,
+  turn_count: int,
+  max_turns: int,
+  elapsed_ms: int,
+  time_budget_ms: int,
+  model: BaseChatModel,
+) -> tuple[bool, str]:
+  """规则优先 + LLM 兜底：判断是否需要继续调用工具
+  
+  Args:
+    question: 用户问题
+    latest_tool_result: 最新工具结果
+    turn_count: 当前循环次数
+    max_turns: 最大循环次数   
+    elapsed_ms: 当前累计耗时
+    time_budget_ms: 总超时预算
+    model: LangChain ChatModel 实例
+  
+  Returns:
+    tuple[bool, str]: 是否继续调用，继续调用原因
+  """
+
+  # 规则 1：达到最大次数
+  if turn_count >= max_turns:
+    return False, "reach_max_turns"
+
+  # 规则 2：工具执行失败
+  if not latest_tool_result.success:
+    return False, "tool_failed"
+
+  # 规则 3：超时
+  if elapsed_ms >= time_budget_ms:
+    return False, "timeout"
+
+  # 规则 4：结果已充分（>80 字符）
+  data_str = str(latest_tool_result.data) if latest_tool_result.data else ""
+  if len(data_str) > 80:
+    return False, "enough_information"
+
+  # 规则 5：LLM 兜底
+  prompt = (
+    f"用户问题：{question}\n"
+    f"工具返回内容：{data_str[:500]}\n\n"
+    f"以上信息是否足够回答用户问题？\n"
+    f"如果足够，只回复 STOP。如果还需要更多信息，只回复 CONTINUE。\n"
+    f"不要解释，不要任何其他文字。"
+  )
+  try:
+    response = model.invoke(prompt)
+    if hasattr(response, "content"):
+      answer = response.content
+    else:
+      answer = str(response)
+    answer = answer.strip().upper()
+  except Exception:
+    return False, "llm_error"
+
+  if "CONTINUE" in answer:
+    return True, "llm_continue"
+  return False, "llm_stop"
 
 
 # ── Harness H1：BOUND 分类 → check_bound 用的动作描述 ──────────
@@ -82,43 +171,137 @@ def tool_execute(state: MainState) -> dict:
     question = state.get(StateField.USER_QUESTION, "")
     session_id = state.get(StateField.SESSION_ID, "")
 
-    # ── 第 1 步：Harness 安检（确定性代码，不信任 LLM）──
-    try:
-      # 从注册表查这个工具的安全分类（READ_ONLY / NETWORK / WRITE）
-      bound_category = get_tool_bound(target_tool)
-      # 把分类映射成 action 描述；NETWORK →「网络搜索」，不会命中 NEVER_DO
-      action_desc = BOUND_ACTION_MAP.get(bound_category, "未知操作")
-      action = f"调用工具:{target_tool} {action_desc}"
-      # target 用用户问题；若问题里含 .env 等危险路径模式会被 DANGER_ZONES 拦截
-      allowed, reason = check_bound(action, question)
-      if not allowed:
-        # 安检失败：直接返回错误 ToolResult，Graph 不崩、不调外网
-        return {
-          StateField.TOOL_RESULTS: [ToolResult(success=False, data="", error=reason)],
-          StateField.NEED_CONTINUE: False,
-        }
-    except Exception as e:
-      # 工具名不存在等异常，和原来一样兜底
-      return {
-        StateField.TOOL_RESULTS: [ToolResult(success=False, data="", error=str(e))],
-        StateField.NEED_CONTINUE: False,
-      }
+    # H2：从 State 取 trace_id（invoke 前由 _invoke_with_trace 写入）
+    trace_id = state.get(StateField.TRACE_ID, "")
 
-    # ── 第 2 步：安检通过，真正执行工具（和原来一样）──
-    try:
-      # 返回值是一个**从字典里取出来的**函数，接收 ToolContext + 输入字符串，返回 ToolResult
-      tool_func = get_tool(target_tool)           # 从注册表拿函数
-      ctx = ToolContext(session_id=session_id)    # 构造调用上下文
-      # 执行**取出来的那个函数**
-      result = tool_func(ctx, question)           # 执行！result 是 ToolResult
-    except Exception as e:
-      result = ToolResult(success=False, data="", error=str(e))
+    # H2：从 State 取 loop 控制变量
+    # 循环控制变量，从 State 取，给默认值
+    max_turns = state.get(StateField.MAX_TURNS, DEFAULT_MAX_TURNS)  # 最大循环次数
+    time_budget_ms = state.get(StateField.TIME_BUDGET_MS, DEFAULT_TIME_BUDGET_MS) # 总超时预算30秒
+    token_budget_limit = state.get(
+      StateField.TOKEN_BUDGET_ESTIMATE, DEFAULT_TOKEN_BUDGET_ESTIMATE
+    ) # 软 token 预算8000
+
+    # 初始化：结果列表 + 计时起点 + 软 token 累计
+    tool_results_list: list[ToolResult] = []
+    turn_count = 0
+    token_budget_used_estimate = 0
+    node_t0 = time.monotonic()
+    loop_stop_reason = "unknown"
+    model = get_llm()
+
+
+    # H2：循环执行工具调用，直到达到最大循环次数或超时
+    while turn_count < max_turns:
+
+      # ── 第 1 步：Harness 安检（确定性代码，不信任 LLM）──
+      try:
+        # 从注册表查这个工具的安全分类（READ_ONLY / NETWORK / WRITE）
+        bound_category = get_tool_bound(target_tool)
+        # 把分类映射成 action 描述；NETWORK →「网络搜索」，不会命中 NEVER_DO
+        action_desc = BOUND_ACTION_MAP.get(bound_category, "未知操作")
+        action = f"调用工具:{target_tool} {action_desc}"
+        # target 用用户问题；若问题里含 .env 等危险路径模式会被 DANGER_ZONES 拦截
+        allowed, reason = check_bound(action, question)
+
+        # H2：记录安检结果（无论通过与否）
+        if trace_id:
+          trace_bound_check(
+            trace_id,
+            session_id,
+            target_tool=target_tool,
+            allowed=allowed,
+            reason=reason,
+          )
+
+        if not allowed:
+          loop_stop_reason = "bound_rejected"
+          tool_results_list.append(ToolResult(success=False, data="", error=reason))
+          break   # 不 return，统一走底部的返回值逻辑
+
+      except Exception as e:
+        if trace_id:
+          trace_bound_check(
+            trace_id,
+            session_id,
+            target_tool=target_tool,
+            allowed=False,
+            reason=str(e),
+          )
+
+        loop_stop_reason = "tool_setup_error"
+        tool_results_list.append(ToolResult(success=False, data="", error=str(e)))
+        break   # 不 return，统一走底部的返回值逻辑
+
+      # ── 第 2 步：安检通过，真正执行工具（和原来一样）──
+      t0 = time.monotonic()       # 执行工具 + 计时
+      try:
+        # 返回值是一个**从字典里取出来的**函数，接收 ToolContext + 输入字符串，返回 ToolResult
+        tool_func = get_tool(target_tool)           # 从注册表拿函数
+        ctx = ToolContext(session_id=session_id)    # 构造调用上下文
+        # 执行**取出来的那个函数**
+        result = tool_func(ctx, question)           # 执行！result 是 ToolResult
+      except Exception as e:
+        result = ToolResult(success=False, data="", error=str(e))
+      
+      step_ms = int((time.monotonic() - t0) * 1000)   # 执行工具的耗时，单位毫秒
+
+
+      # —— 第 3 步：累积结果 ——
+      tool_results_list.append(result)
+      
+
+      # —— 第 4 步：trace ——
+      if trace_id:
+        trace_tool_execute(
+          trace_id,
+          session_id,
+          target_tool=target_tool,
+          success=result.success,
+          latency_ms=step_ms,
+          error=result.error or "",
+        )
+
+      # 第 5 步：turn_count += 1（放在工具执行之后）
+      turn_count += 1
+
+      # 第 5.5 步：token 软预算（每轮估算 question + data 字符数）
+      data_str = str(result.data) if result.data else ""
+      token_budget_used_estimate += len(question) + len(data_str)
+      if token_budget_used_estimate >= token_budget_limit:
+        loop_stop_reason = "budget_exceeded"
+        break
+
+      # —— 第 6 步：判断是否继续 ——
+      total_elapsed = int((time.monotonic() - node_t0) * 1000)
+      should_continue, reason = _should_continue_by_observation(
+        question=question,
+        latest_tool_result=result,
+        turn_count=turn_count,
+        max_turns=max_turns,
+        elapsed_ms=total_elapsed,
+        time_budget_ms=time_budget_ms,
+        model=model,
+      )
+
+      if not should_continue:       # 局部变量，while 循环要不要继续
+        loop_stop_reason = reason
+        break   # 不 return，统一走底部的返回值逻辑，包括 break 和 return
+
+    if loop_stop_reason == "unknown":
+      loop_stop_reason = "reach_max_turns"
+
+    total_elapsed_ms = int((time.monotonic() - node_t0) * 1000)
 
     return {
-      StateField.TOOL_RESULTS: [result],
-      StateField.NEED_CONTINUE: False,
+      StateField.TOOL_RESULTS: tool_results_list,
+      StateField.NEED_CONTINUE: False,                  # Graph 路由不回头 -> 不继续调用工具
+      StateField.TURN_COUNT: turn_count,
+      StateField.LOOP_STOP_REASON: loop_stop_reason,
+      StateField.TOOL_BUDGET_USED: turn_count,
+      StateField.TOKEN_BUDGET_USED_ESTIMATE: token_budget_used_estimate,
+      StateField.ELAPSED_MS: total_elapsed_ms,
     }
-
 
 # ── 图构建 ────────────────────────────────────────────────────
 
@@ -130,10 +313,9 @@ def build_graph() -> CompiledStateGraph:
 
   当前图结构：
     START → load_context → intent_route（条件分支）
-      ├─ general_chat → result_synthesis → END
-      ├─ use_tool → tool_execute → result_synthesis → END
-      └─ inspire → tool_execute → result_synthesis → END
-        （P1: inspire 临时走单工具调用；P2/P3 升级为 Phase 1 发散+Phase 2 收敛管线）
+      ├─ general_chat → result_synthesis → memory_update → END
+      ├─ use_tool → tool_execute → result_synthesis → memory_update → END
+      └─ inspire → inspire_diverge → inspire_converge → memory_update → END
   """
   # 1. 创建图
   graph = StateGraph(MainState)
@@ -144,11 +326,28 @@ def build_graph() -> CompiledStateGraph:
     question = state.get(StateField.USER_QUESTION, "")
     model = get_llm()
     tools = list_tools()        # 所有可用的工具的名字 + 描述
+    trace_id = state.get(StateField.TRACE_ID, "")
+    session_id = state.get(StateField.SESSION_ID, "")
+
+    t0 = time.monotonic()       # 起点时间戳，单位 s，精确到微秒
     result: RouteResult = route_intent(question, model, tools)
+    elapsed_ms = int((time.monotonic() - t0) * 1000)    # 经过的秒数转换为毫秒并去掉小数
+
+    if trace_id:
+      trace_route_decision(
+        trace_id,
+        session_id,
+        intent=result.intent,
+        target_tool=result.target_tool or "",
+        reason=result.reason,
+        latency_ms=elapsed_ms,
+      )
+    
     return {
       StateField.INTENT: result.intent,
       StateField.TARGET_TOOL: result.target_tool or "",
     }
+
 
   def result_synthesis_node(state: MainState) -> dict:
     """适配层：给 result_synthesis 注入 model（依赖注入 → LangGraph 节点）。"""
@@ -157,6 +356,14 @@ def build_graph() -> CompiledStateGraph:
   def memory_update_node(state: MainState) -> dict:
     """适配层：把 LangGraph 节点签名转成 memory_update 的调用格式。"""
     return memory_update(state, get_llm())
+
+  def inspire_diverge_node(state: MainState) -> dict:
+    """适配层：把 LangGraph 节点转成 inspire_diverge 的调用格式。"""
+    return inspire_diverge(state, get_llm())
+
+  def inspire_converge_node(state: MainState) -> dict:
+    """适配层：把 LangGraph 节点转成 inspire_converge 的调用格式。"""
+    return inspire_converge(state, get_llm())
 
   '''
   LangGraph 注册节点时，只认这种函数：
@@ -170,6 +377,8 @@ def build_graph() -> CompiledStateGraph:
   graph.add_node("tool_execute", tool_execute)
   graph.add_node("result_synthesis", result_synthesis_node)
   graph.add_node("memory_update", memory_update_node)
+  graph.add_node("inspire_diverge", inspire_diverge_node)
+  graph.add_node("inspire_converge", inspire_converge_node)
 
   # 4. 连接边
   graph.add_edge(START, "load_context")             # 固定边：起点→加载上下文
@@ -185,11 +394,13 @@ def build_graph() -> CompiledStateGraph:
     ),
     {
       "use_tool": "tool_execute",         # 事实查询：单工具调用 → 基于结果回答
-      "inspire": "tool_execute",          # 灵感发散：P1 暂走工具调用（P2 升级为发散-收敛管线）
+      "inspire": "inspire_diverge",          # 灵感发散：P1 暂走工具调用（P2 升级为发散-收敛管线）
       "general_chat": "result_synthesis", # 普通闲聊：直接 LLM 回复
     },
   )
   graph.add_edge("tool_execute", "result_synthesis") # 固定边：工具→合成
+  graph.add_edge("inspire_diverge", "inspire_converge") # 固定边：发散→收敛
+  graph.add_edge("inspire_converge", "memory_update") # 固定边：收敛→记忆更新
   graph.add_edge("result_synthesis", "memory_update") # 固定边：合成→记忆更新
   graph.add_edge("memory_update", END) # 固定边：记忆更新→终点
 
@@ -197,48 +408,64 @@ def build_graph() -> CompiledStateGraph:
   return graph.compile(checkpointer=MemorySaver())
 
 
+# ── H2：带追踪的 invoke 封装 ─────────────────────────────────
+def _invoke_with_trace(session_id: str, question: str) -> dict:
+  """执行 graph.invoke 并写入  run_start / run_end 追踪事件。"""
+  graph = build_graph()
+
+  # trace_id 写入 initial_state，各节点从 State 读取后打点
+  with agent_trace_context(session_id, question) as ctx:
+    trace_id = ctx["trace_id"]
+    t0 = ctx["t0"]
+
+    initial_state: MainState = {
+      StateField.SESSION_ID: session_id,
+      StateField.USER_QUESTION: question,
+      StateField.TRACE_ID: trace_id,      # ★ 需要 state.py 新增此字段
+    }
+
+    try:
+      final_state = graph.invoke(
+        initial_state,
+        config={"configurable": {"thread_id": session_id}},
+      )
+      error = ""
+    except Exception as e:
+      # 异常也记 run_end，方便 H3 对照
+      elapsed_ms = int((time.monotonic() - t0) * 1000)
+      trace_run_end(
+        trace_id,
+        session_id,
+        latency_ms=elapsed_ms,
+        intent="",
+        target_tool="",
+        error=str(e),
+      )
+      raise
+
+    elapsed_ms = int((time.monotonic() - t0) * 1000)
+    trace_run_end(
+      trace_id,
+      session_id,
+      latency_ms=elapsed_ms,
+      intent=final_state.get(StateField.INTENT, ""),
+      target_tool=final_state.get(StateField.TARGET_TOOL, ""),
+      final_response_preview=final_state.get(StateField.FINAL_RESPONSE, ""),
+    )
+
+    return final_state
+
+
 # ── 运行入口（调试用）─────────────────────────────────────────
 
 def run_graph_debug(session_id: str, question: str) -> dict:
-  """调试入口：返回完整 State，方便查看意图、路由、工具结果等中间态。
-
-  与 run_graph() 的区别：返回整个 final_state dict 而不是只提取 final_response。
-  测试脚本用这个来打印各阶段详情。
-  """
-  graph = build_graph()
-  initial_state: MainState = {
-    StateField.SESSION_ID: session_id,
-    StateField.USER_QUESTION: question,
-  }
-  return graph.invoke(
-    initial_state,
-    config={"configurable": {"thread_id": session_id}},
-  )
+  """调试入口：返回完整 State + H2 追踪已写入 JSONL。"""
+  return _invoke_with_trace(session_id, question)
 
 
 def run_graph(session_id: str, question: str) -> str:
-  """构建图 + 执行一次对话，返回 AI 回复。
-
-  这是调试入口——在终端快速验证整个 Agent 链路是否跑通。
-  生产环境中 Sidebar 的 /chat 端点也会调用类似的逻辑。
-
-  Args:
-      session_id: 会话ID，用于多轮对话的检查点隔离
-      question: 用户当前问题
-  
-  Returns:
-      AI 回复文本
-  """
-  graph = build_graph()                                # 获取编译后的图
-
-  initial_state: MainState = {
-    StateField.SESSION_ID: session_id,
-    StateField.USER_QUESTION: question,
-  }
-
-  final_state = graph.invoke(
-    initial_state,
-    config = {"configurable": {"thread_id": session_id}},
-  )
-
+  """生产入口：/chat/graph 调用，返回 AI 回复文本。"""
+  final_state = _invoke_with_trace(session_id, question)
   return final_state.get(StateField.FINAL_RESPONSE, "")
+
+
