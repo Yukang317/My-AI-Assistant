@@ -37,6 +37,20 @@ def rag_search(ctx: ToolContext, query: str) -> ToolResult:
         answer = result.get("answer", "")    # LLM 基于检索结果生成的回答
         sources = result.get("sources", [])  # 引用的文档片段列表
         
+        # RagService 检索为空时会带上 no_result 标记并跳过 LLM；
+        # 没有该标记的旧路径则用 sources 是否为空兜底判断。
+        no_result = result.get("no_result", False) or not sources
+
+        # 空结果：返回 success=True + 诚实文案（而非 success=False 的"搜索失败"）。
+        # 这样 result_synthesis 会把"知识库没有相关内容"作为依据如实转达用户，
+        # 不会被包装成系统错误，也不让合成 LLM 拿空结果编造。
+        if no_result:
+            return ToolResult(
+                success=True,
+                data="知识库中没有检索到与该问题相关的内容。",
+                artifacts={"sources": []},
+            )
+
         if answer:
             return ToolResult(
                 success=True,
