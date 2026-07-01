@@ -1,0 +1,204 @@
+[root@iZbp12zrjuiewhsqxvgm4yZ personal_assistant]# uv run python -c "from rag.config import Config; print(Config.EMBEDDING_API_MODEL, Config.EMBEDDING_DIM)"
+BAAI/bge-m3 1024
+[root@iZbp12zrjuiewhsqxvgm4yZ personal_assistant]# uv run python scripts/seed_knowledge_base.py
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/20260527_项目复制和uv虚拟环境.md (2p / 6c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260527_阶段1.md (6p / 30c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260527_阶段2.md (6p / 30c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260527_项目启动与决策记录.md (1p / 3c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260528_阶段2.5.md (3p / 11c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260529_阶段2.5前端双栏布局.md (21p / 107c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260531_阶段3_SSE流式输出.md (10p / 54c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/202605_rag前/260531_阶段3_SSE流式输出_前端.md (8p / 39c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260601_阶段4_会话重命名_后端.md (8p / 43c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260602_开发工具_DevLogger技能创建.md (2p / 8c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260602_阶段5_Embedding模块.md (5p / 21c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260603_协作模式_ModeE骨架式教学.md (1p / 3c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260603_阶段5_技术方案v4_参考项目分析.md (5p / 22c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260605_阶段5_VectorStore_Search去重实现.md (4p / 18c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260605_阶段5_VectorStore骨架_ModeE.md (3p / 15c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260605_阶段5_向量检索核心概念_L2归一化与IVF索引.md (4p / 19c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260605_阶段5_向量检索进阶_ANN与父子分块策略.md (5p / 21c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260606_阶段5_VectorStore代码审查与修复.md (3p / 15c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260607_阶段5_Chunker语义分块_ModeE.md (3p / 12c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260607_阶段5_Indexer摄入编排_ModeE.md (5p / 25c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260607_阶段5_Parser策略模式编码_ModeE.md (3p / 12c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260607_阶段5_文档解析方案架构讨论.md (3p / 12c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260608_阶段5_BM25_VectorRetriever_检索通道.md (4p / 18c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260608_阶段5_BM25数据流问答.md (3p / 15c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260608_阶段5_RRF融合_ModeE.md (3p / 13c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260609_阶段5_RAG评估_evaluate.md (3p / 18c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260609_阶段5_RagService编排层_ModeE.md (5p / 24c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_rag全流程打通代码修改记录.md (7p / 38c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_阶段5_RAG架构深度学习_依赖管理.md (5p / 30c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_阶段5_RAG评估收尾_Step23启动.md (13p / 63c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_阶段5_Step12_前端RAG集成.md (5p / 26c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_阶段5_Step13_Docker基础设施.md (3p / 15c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/260610_阶段5_Step23_FastAPI集成完成.md (5p / 25c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/20260601-0610_RAG初步部分/阶段5_RAG知识点与疑问汇总.md (6p / 27c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260611_阶段6.1_Agent骨架开发_ModeE教学.md (4p / 19c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260612_知识点笔记_LangGraph基础与实战.md (5p / 22c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260612_阶段6.1_Agent骨架完成.md (3p / 15c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260618_阶段6.2_记忆系统_ModeE教学.md (8p / 33c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260619_阶段6.2_文档状态核实与修正.md (3p / 12c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260620_Git提交与分支概念学习.md (1p / 3c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260620_grep_vs_Read_底层逻辑与偷懒根因分析.md (2p / 9c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260620_智能体偷懒现象分析_grep_vs_read.md (2p / 7c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260620_阶段6.2_记忆系统端到端验证.md (1p / 3c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260621_阶段6.2_P1验收与集成快照机制.md (3p / 12c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260621_阶段6.2_异步并发底层深度讨论.md (5p / 27c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260622_6.3阶段讨论.md (3p / 17c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260622_阶段6.2_P2_web_search验收通过.md (3p / 11c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260622_阶段6.3_H1_H3_验收与深度答疑.md (4p / 20c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260623_阶段6.3_H2_trace.py深度答疑.md (8p / 43c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260624_阶段6.3_H2_main_graph深度答疑.md (5p / 22c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260625_代码审阅_main_graph与state问题分析.md (7p / 34c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260625_阶段6.3_H2验收完成.md (2p / 6c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260626_阶段6.4_Loop专项测试.md (4p / 19c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260626_阶段6.5_测试补充.md (1p / 3c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260626_阶段6.5_灵感引擎接线与冒烟测试.md (9p / 41c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260627_阶段7.0_方案-bug修复与端到端跑通.md (2p / 10c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/260628_阶段7.0_bug根因分析与修复.md (5p / 26c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] dev_log/日志记录和笔记记录风格.md (2p / 9c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/Exa官方给的提示词.md (9p / 50c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/Git工作流说明.md (4p / 18c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/dev-logger示例.md (2p / 9c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/上次会话成果.md (6p / 31c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/阶段5技术方案.md (22p / 122c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/阶段6.5技术方案.md (5p / 25c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/阶段6技术方案.md (4p / 16c)
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://api.siliconflow.cn/v1/embeddings "HTTP/1.1 200 OK"
+[NEW    ] docs/阶段7技术方案.md (4p / 20c)
+
+灌库完成：共 66 个文件，新增 66，更新 0，跳过 0，失败 0
+[root@iZbp12zrjuiewhsqxvgm4yZ personal_assistant]# 
